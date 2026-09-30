@@ -83,7 +83,7 @@
     window.submitRequest(payload).then(function(){
       submitBtn.disabled = false;
       document.getElementById('doneMsg').textContent =
-        '"'+payload.shortName+'" from '+payload.function+' is in the queue for review. The outcome, and where to send any supporting files, will come back to '+payload.yourName+'.';
+        '"'+payload.shortName+'" from '+payload.function+' is in the queue for review.';
       f.hidden = true; done.classList.add('show'); done.focus();
     }).catch(function(err){
       submitBtn.disabled = false;
