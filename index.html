@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Request Intake | Compass Datacenters</title>
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <img src="assets/compass-logo.png" alt="Compass Datacenters">
+    <div class="viewswitch" role="group" aria-label="View">
+      <button type="button" id="vReq" aria-pressed="true">Requester form</button>
+      <button type="button" id="vTri" aria-pressed="false">Triage view</button>
+    </div>
+  </header>
+
+  <!-- ================= REQUESTER FORM ================= -->
+  <main id="requester">
+    <h1 id="formTitle">Request Intake</h1>
+    <p class="lede">Share a need for review. Every request gets a reply.</p>
+    <div class="notes">
+      <p>IT support and system access requests go to IT.</p>
+      <p>Describe sensitive data rather than pasting it.</p>
+    </div>
+
+    <form id="f" novalidate>
+      <section class="step" aria-labelledby="s1">
+        <h2 id="s1"><span class="n">1</span>About the request</h2>
+        <div class="field row">
+          <div><label class="q" for="name">Your name</label><input type="text" id="name" autocomplete="name" required></div>
+          <div><label class="q" for="fn">Function</label>
+            <select id="fn" required>
+              <option value="">Choose one</option>
+              <option>Capital Projects</option><option>Capital Markets</option><option>Opex Finance</option>
+              <option>Tax</option><option>Risk, Insurance &amp; Compliance</option><option>Supply Chain</option>
+              <option>Treasury</option><option>Design &amp; Delivery</option><option>CorpDev</option><option>Other</option>
+            </select></div>
+        </div>
+        <div class="field"><label class="q" for="short">Short name for the request</label>
+          <input type="text" id="short" required placeholder="For example: Vendor on-time tracker"></div>
+        <div class="field"><label class="q" for="steward">Who would own it once it is built</label>
+          <span class="help" id="stewardHelp">The person in your function who keeps it running after delivery.</span>
+          <input type="text" id="steward" aria-describedby="stewardHelp" required></div>
+      </section>
+
+      <section class="step" aria-labelledby="s2">
+        <h2 id="s2"><span class="n">2</span>The need</h2>
+        <div class="field"><label class="q" for="need">What decision or task would this change, and why does it matter</label>
+          <span class="help" id="needHelp">Describe the need, not the tool. Asking why a few times usually gets there.</span>
+          <textarea id="need" aria-describedby="needHelp" required></textarea></div>
+        <div class="field"><span class="q" id="culL">Which Compass anchors and principles are at play <span class="opt">(optional)</span></span>
+          <div class="culture" role="group" aria-labelledby="culL" id="culture">
+            <fieldset><legend>Operational excellence</legend>
+              <label class="check"><input type="checkbox" value="Fastest to ready">Fastest to ready</label>
+              <label class="check"><input type="checkbox" value="Built to last">Built to last</label>
+              <label class="check"><input type="checkbox" value="Lowest total cost of ownership">Lowest total cost of ownership</label>
+            </fieldset>
+            <fieldset><legend>Product leadership</legend>
+              <label class="check"><input type="checkbox" value="Any prototype">Any prototype</label>
+              <label class="check"><input type="checkbox" value="Mass customized">Mass customized</label>
+              <label class="check"><input type="checkbox" value="Profoundly simple">Profoundly simple</label>
+            </fieldset>
+            <fieldset><legend>Key principles</legend>
+              <label class="check"><input type="checkbox" value="Poka yoke">Poka yoke</label>
+              <label class="check"><input type="checkbox" value="Pareto principle">Pareto principle</label>
+              <label class="check"><input type="checkbox" value="Crawl, walk, never run">Crawl, walk, never run</label>
+              <label class="check"><input type="checkbox" value="Power of incremental">Power of incremental</label>
+              <label class="check"><input type="checkbox" value="Performance paths">Performance paths</label>
+              <label class="check"><input type="checkbox" value="Failure on the path to success">Failure on the path to success</label>
+            </fieldset>
+          </div></div>
+        <div class="field"><label class="q" for="freq">How often does this need arise</label>
+          <select id="freq" required>
+            <option value="">Choose one</option>
+            <option>Once</option><option>Daily</option><option>Weekly</option><option>Monthly</option>
+            <option>Quarterly</option><option>Per project</option><option>Occasionally</option>
+            <option value="Other">Other</option>
+          </select>
+          <input type="text" id="freqOther" class="followup" placeholder="Describe how often" aria-label="How often this need arises, described" hidden></div>
+        <div class="field"><label class="q" for="effort">Roughly how long it takes <span class="opt">(optional)</span></label>
+          <input type="text" id="effort" placeholder="For example: half a day"></div>
+        <div class="field"><label class="q" for="miss">What goes wrong today, and what has a miss cost</label>
+          <span class="help" id="missHelp">A rough number helps, even an order of magnitude.</span>
+          <textarea id="miss" aria-describedby="missHelp" required></textarea></div>
+        <div class="field"><label class="q" for="users">Who uses the result <span class="opt">(optional)</span></label>
+          <input type="text" id="users" placeholder="Teams or roles"></div>
+      </section>
+
+      <section class="step" aria-labelledby="s3">
+        <h2 id="s3"><span class="n">3</span>Where the information lives</h2>
+        <p class="intro">Tick everything that applies. "In someone's head" is a real answer.</p>
+        <div class="field checks" role="group" aria-labelledby="s3" id="srcs">
+          <label class="check"><input type="checkbox" value="NetSuite">NetSuite</label>
+          <label class="check"><input type="checkbox" value="Procore">Procore</label>
+          <label class="check"><input type="checkbox" value="SharePoint or OneDrive files">SharePoint or OneDrive files</label>
+          <label class="check"><input type="checkbox" value="Excel models">Excel models</label>
+          <label class="check"><input type="checkbox" value="Email or Teams">Email or Teams</label>
+          <label class="check"><input type="checkbox" value="In someone's head">In someone's head</label>
+          <label class="check"><input type="checkbox" value="Not sure">Not sure</label>
+        </div>
+        <div class="field"><label class="q" for="srcOther">Anything else <span class="opt">(optional)</span></label>
+          <input type="text" id="srcOther"></div>
+      </section>
+
+      <section class="step" aria-labelledby="s4">
+        <h2 id="s4"><span class="n">4</span>Which of these is closest</h2>
+        <p class="intro">Pick the one that best describes the problem today.</p>
+        <div class="field">
+          <div class="tiles" role="radiogroup" aria-labelledby="s4" id="gap">
+            <label class="tile"><input type="radio" name="gap" value="Remember">
+              <span class="t">We answer it from scratch every time</span>
+              <span class="d">The answer existed before and gets rebuilt each cycle.</span></label>
+            <label class="tile"><input type="radio" name="gap" value="Verify">
+              <span class="t">We take it on trust</span>
+              <span class="d">Nobody checks it against the source or the last agreement.</span></label>
+            <label class="tile"><input type="radio" name="gap" value="See">
+              <span class="t">We can't see it clearly</span>
+              <span class="d">The data exists but is scattered, miscoded or hard to pull.</span></label>
+            <label class="tile"><input type="radio" name="gap" value="Guess">
+              <span class="t">We estimate it by hand</span>
+              <span class="d">Judgment fills in where a record or model should be.</span></label>
+          </div>
+          <div class="nofit"><label><input type="radio" name="gap" value="None fit">None of these fit</label></div>
+        </div>
+      </section>
+
+      <section class="step" aria-labelledby="s5">
+        <h2 id="s5"><span class="n">5</span>Sensitivity</h2>
+        <div class="field"><span class="q" id="sensL">Does it involve investor, customer, personnel or detailed financial data</span>
+          <div class="radios" role="radiogroup" aria-labelledby="sensL">
+            <label><input type="radio" name="sens" value="Yes">Yes</label>
+            <label><input type="radio" name="sens" value="No">No</label>
+            <label><input type="radio" name="sens" value="Not sure">Not sure</label>
+          </div></div>
+        <div class="field"><span class="q" id="wbL">Would it only read from a system like NetSuite or Procore, or write back to it</span>
+          <div class="radios" role="radiogroup" aria-labelledby="wbL">
+            <label><input type="radio" name="wb" value="Read only">Read only</label>
+            <label><input type="radio" name="wb" value="Writes back">Writes back</label>
+            <label><input type="radio" name="wb" value="Neither">Neither</label>
+            <label><input type="radio" name="wb" value="Not sure">Not sure</label>
+          </div></div>
+        <div class="field"><span class="help">Supporting files are welcome but not required. The reply will say where to send them.</span></div>
+      </section>
+
+      <div class="errbox" id="errs" role="alert" tabindex="-1"></div>
+      <div class="actions">
+        <button type="submit" class="btn">Submit request</button>
+        <span class="preview">Preview only. Nothing is sent from this page yet.</span>
+      </div>
+    </form>
+
+    <div class="done" id="done" tabindex="-1">
+      <h2>Request submitted</h2>
+      <p id="doneMsg"></p>
+      <p class="preview">In this preview nothing left the page. Where submissions land is still to be decided.</p>
+      <p style="margin-top:14px"><button type="button" class="btn quiet" id="another">Start another request</button></p>
+    </div>
+  </main>
+
+  <!-- ================= TRIAGE VIEW ================= -->
+  <main id="triage" hidden>
+    <h1>Triage</h1>
+    <p class="internal">Internal only. Requesters never see this. Build it as a separate, access-controlled view,
+      not a section of the public form.</p>
+
+    <section class="step" aria-labelledby="t1">
+      <h2 id="t1"><span class="n">1</span>The request</h2>
+      <div class="field sample"><dl id="sampleDl">
+        <dt>Request</dt><dd>Entity-level tax allocation check</dd>
+        <dt>From</dt><dd>Tax</dd>
+        <dt>Owner once built</dt><dd>Named by requester</dd>
+        <dt>Frequency</dt><dd>Per project</dd>
+        <dt>Closest gap</dt><dd>We take it on trust</dd>
+        <dt>Anchors and principles</dt><dd>Built to last, Poka yoke</dd>
+        <dt>Information lives in</dt><dd>NetSuite, Excel models, in someone's head</dd>
+        <dt>Sensitive data</dt><dd>Yes</dd>
+        <dt>System access</dt><dd>Read only</dd>
+      </dl></div>
+      <p class="intro" style="margin-top:8px">Sample record. Submitting the requester form fills this with that submission.</p>
+    </section>
+
+    <section class="step" aria-labelledby="t2">
+      <h2 id="t2"><span class="n">2</span>Business lens</h2>
+      <p class="intro">Same four lenses as the PMO intake, scored here rather than by the requester.</p>
+      <div class="field" id="lenses"></div>
+      <p class="scale-key">Minus three is strongly against, plus three strongly in favor.</p>
+    </section>
+
+    <section class="step" aria-labelledby="t3">
+      <h2 id="t3"><span class="n">3</span>Fit</h2>
+      <div class="field"><span class="q" id="rdL">Changes a recurring decision</span>
+        <div class="radios" role="radiogroup" aria-labelledby="rdL">
+          <label><input type="radio" name="rd">Yes</label><label><input type="radio" name="rd">No</label></div></div>
+      <div class="field"><span class="q" id="deL">The data exists</span>
+        <div class="radios" role="radiogroup" aria-labelledby="deL">
+          <label><input type="radio" name="de">Yes</label><label><input type="radio" name="de">Partly</label>
+          <label><input type="radio" name="de">No</label></div></div>
+      <div class="field"><span class="q" id="scL">Owner confirmed</span>
+        <div class="radios" role="radiogroup" aria-labelledby="scL">
+          <label><input type="radio" name="sc">Yes</label><label><input type="radio" name="sc">No</label></div></div>
+    </section>
+
+    <section class="step" aria-labelledby="t4">
+      <h2 id="t4"><span class="n">4</span>Outcome</h2>
+      <div class="field"><span class="q" id="dispL">Disposition</span>
+        <div class="radios" role="radiogroup" aria-labelledby="dispL">
+          <label><input type="radio" name="disp">Big rock</label><label><input type="radio" name="disp">Small rock</label>
+          <label><input type="radio" name="disp">Backlog</label><label><input type="radio" name="disp">Redirect</label>
+          <label><input type="radio" name="disp">Decline</label></div></div>
+      <div class="field row">
+        <div><label class="q" for="ddate">Decision date</label><input type="date" id="ddate"></div>
+        <div><label class="q" for="rto">Redirect to <span class="opt">(if redirected)</span></label><input type="text" id="rto"></div>
+      </div>
+      <div class="field"><label class="q" for="note">Note back to the requester</label>
+        <textarea id="note"></textarea></div>
+      <div class="actions"><button type="button" class="btn" id="saveT">Save outcome</button>
+        <span class="preview" id="savedMsg">Preview only.</span></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>compassdatacenters.com</span>
+    <span class="conf">Compass Datacenters confidential</span>
+    <span>Draft mockup, version 0.1</span>
+  </footer>
+</div>
+
+<script src="assets/app.js"></script>
+</body>
+</html>
