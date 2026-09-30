@@ -2,5 +2,5 @@
 
 Status: ruled 2026-09-30 by the owner.
 
-- `index.html` and `triage.html` are exempt from lint rule STE020 (4-word cap on labels), through a file-level `ste-disable-file` note.
+- `index.html` and `triage.html` are exempt from lint rule STE020 (4-word cap on labels), through a `ste-disable-line` / `ste-disable-next-line` note on each long label. The lint allows no file-level escape in UI files.
 - Why: form questions are full sentences. A real `<label>` lets a click on the question focus its field.
