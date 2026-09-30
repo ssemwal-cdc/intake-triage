@@ -1,6 +1,6 @@
 # Submission destination
 
-Status: open. Needs the owner's pick.
+Status: ruled 2026-09-30, GitHub repo storage (below). Table kept as the options weighed.
 
 | Option | Gain | Loss |
 |---|---|---|
@@ -12,7 +12,7 @@ Status: open. Needs the owner's pick.
 
 Pick this before the submit-adapter work lands, so the adapter targets a real destination.
 
-## Proposed: GitHub repo storage (owner's direction, pending confirmation)
+## Ruled 2026-09-30: GitHub repo storage
 
 Governed by the threat-model ruling (no malicious users; submissions not readily visible).
 
