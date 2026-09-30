@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Request Intake | Compass Datacenters</title>
+<style>
+  :root{
+    --onyx:#141E27; --slate:#34444D; --muted:#5E6B73; --line:#D5DADD;
+    --wash:#F3F4F5; --orange:#F37820; --orange-ink:#B3530C; --white:#FFFFFF;
+    --err:#B42318;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--white);color:var(--onyx);
+       font-family:Arial,"Helvetica Neue",Helvetica,sans-serif;font-size:16px;line-height:1.5}
+  .wrap{max-width:760px;margin:0 auto;padding:32px 24px 72px}
+  header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
+             padding-bottom:20px;border-bottom:2px solid var(--orange)}
+  header.top img{height:60px;width:auto;display:block}
+  .viewswitch{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .viewswitch button{font:inherit;font-size:14px;padding:8px 14px;border:0;background:var(--white);
+       color:var(--slate);cursor:pointer}
+  .viewswitch button[aria-pressed="true"]{background:var(--onyx);color:var(--white)}
+  h1{font-size:34px;line-height:1.15;margin:28px 0 10px;font-weight:700;letter-spacing:-.01em}
+  .lede{font-size:17px;color:var(--slate);margin:0 0 20px;max-width:62ch}
+  .notes{border-left:3px solid var(--line);padding:2px 0 2px 16px;margin:0 0 36px;
+         color:var(--muted);font-size:14.5px}
+  .notes p{margin:6px 0}
+  section.step{margin-top:40px}
+  .step h2{display:flex;align-items:baseline;gap:12px;font-size:21px;margin:0 0 4px}
+  .step h2 .n{color:var(--orange-ink);font-size:16px;font-weight:700;min-width:1.2em}
+  .step .intro{margin:0 0 18px 1.95em;color:var(--muted);font-size:14.5px}
+  .field{margin:0 0 20px 1.95em}
+  label.q, .q{display:block;font-weight:700;font-size:15.5px;margin-bottom:4px}
+  .help{display:block;color:var(--muted);font-size:14px;margin:0 0 8px}
+  .opt{font-weight:400;color:var(--muted);font-size:14px}
+  input[type=text],input[type=date],select,textarea{width:100%;font:inherit;color:var(--onyx);
+       padding:10px 12px;border:1px solid #AEB6BB;border-radius:4px;background:var(--white)}
+  textarea{min-height:96px;resize:vertical}
+  input:focus,select:focus,textarea:focus,button:focus-visible,.tile:focus-within,
+  .check:focus-within{outline:3px solid rgba(243,120,32,.45);outline-offset:1px;border-color:var(--orange)}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}
+  .check{display:flex;gap:10px;align-items:flex-start;font-size:15px;padding:4px 0}
+  .check input{margin-top:4px;accent-color:var(--orange)}
+  .radios{display:flex;flex-wrap:wrap;gap:8px}
+  .radios label{display:flex;align-items:center;gap:8px;border:1px solid #AEB6BB;border-radius:4px;
+       padding:8px 14px;font-size:15px;cursor:pointer}
+  .radios input{accent-color:var(--orange)}
+  .radios label:has(input:checked){border-color:var(--onyx);background:var(--wash)}
+
+  /* the one bold element: the gap selector */
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .tile{position:relative;display:block;border:1.5px solid var(--line);border-radius:6px;
+        padding:18px 18px 16px;cursor:pointer;background:var(--white);min-height:128px}
+  .tile input{position:absolute;opacity:0;pointer-events:none}
+  .tile .t{display:block;font-size:19px;font-weight:700;line-height:1.25;margin-bottom:6px}
+  .tile .d{display:block;font-size:14.5px;color:var(--muted)}
+  .tile:hover{border-color:#9AA4AA}
+  .tile:has(input:checked){border-color:var(--orange);box-shadow:inset 0 -4px 0 var(--orange)}
+  .tile:has(input:checked) .t{color:var(--onyx)}
+  .nofit{margin-top:10px;font-size:14.5px}
+  .nofit label{display:inline-flex;gap:8px;align-items:center;color:var(--muted);cursor:pointer}
+
+  .culture{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 20px;
+           border:1px solid var(--line);border-radius:4px;padding:14px 16px 10px}
+  .culture fieldset{border:0;margin:0;padding:0;min-width:0}
+  .culture legend{padding:0;font-size:14px;font-weight:700;color:var(--slate);margin-bottom:4px}
+  .culture .check{font-size:14.5px;padding:3px 0}
+  .followup{margin-top:8px}
+
+  .actions{margin:40px 0 0 1.95em;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .btn{font:inherit;font-weight:700;font-size:16px;padding:12px 22px;border-radius:4px;
+       border:0;background:var(--onyx);color:var(--white);cursor:pointer}
+  .btn:hover{background:var(--slate)}
+  .btn.quiet{background:var(--white);color:var(--onyx);border:1px solid #AEB6BB}
+  .errbox{display:none;margin:28px 0 0 1.95em;border:1px solid var(--err);border-radius:4px;
+          padding:12px 16px;color:var(--err);font-size:15px}
+  .errbox.show{display:block}
+  .errbox ul{margin:6px 0 0;padding-left:18px}
+  .invalid{border-color:var(--err)!important}
+  .done{display:none;margin-top:40px;border:1.5px solid var(--onyx);border-radius:6px;padding:24px}
+  .done.show{display:block}
+  .done h2{margin:0 0 8px;font-size:22px}
+  .done p{margin:6px 0}
+  .preview{font-size:13.5px;color:var(--muted)}
+
+  /* triage view */
+  .internal{background:var(--wash);border-radius:6px;padding:14px 16px;font-size:14.5px;
+            color:var(--slate);margin:0 0 28px}
+  .sample{border:1px solid var(--line);border-radius:6px;padding:16px 18px;margin-bottom:8px}
+  .sample dl{display:grid;grid-template-columns:170px 1fr;gap:6px 16px;margin:0;font-size:15px}
+  .sample dt{color:var(--muted)}
+  .sample dd{margin:0}
+  .lens{display:grid;grid-template-columns:90px 1fr;align-items:center;gap:12px;margin-bottom:10px}
+  .lens .name{font-weight:700}
+  .scale{display:flex;border:1px solid #AEB6BB;border-radius:4px;overflow:hidden;width:max-content}
+  .scale label{position:relative}
+  .scale input{position:absolute;opacity:0}
+  .scale span{display:block;min-width:44px;text-align:center;padding:7px 6px;font-size:14px;
+       border-right:1px solid var(--line);cursor:pointer}
+  .scale label:last-child span{border-right:0}
+  .scale input:checked+span{background:var(--onyx);color:var(--white)}
+  .scale input:focus-visible+span{outline:3px solid rgba(243,120,32,.45);outline-offset:-3px}
+  .scale-key{font-size:13.5px;color:var(--muted);margin:2px 0 14px 102px}
+  /* no single-word last lines at any width */
+  p,.help,.intro,.d,dd,.lede,.notes p,label.q,.q,.check{text-wrap:pretty}
+  h1,h2,.t{text-wrap:balance}
+  [hidden]{display:none!important}
+  footer.foot{margin-top:64px;padding-top:14px;border-top:1px solid var(--line);
+       display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+  footer .conf{color:var(--orange-ink)}
+
+  @media (max-width:640px){
+    .wrap{padding:20px 16px 56px}
+    h1{font-size:28px}
+    .row,.tiles,.checks,.culture{grid-template-columns:1fr}
+    .culture{gap:12px}
+    .field,.step .intro,.actions,.errbox{margin-left:0}
+    header.top{flex-direction:column;align-items:flex-start}
+    .sample dl{grid-template-columns:1fr}
+    .lens{grid-template-columns:1fr}
+    .scale-key{margin-left:0}
+  }
+  @media (prefers-reduced-motion:no-preference){
+    .done.show{animation:rise .25s ease-out}
+    @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <img src="data:image/png;base64,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" alt="Compass Datacenters">
+    <div class="viewswitch" role="group" aria-label="View">
+      <button type="button" id="vReq" aria-pressed="true">Requester form</button>
+      <button type="button" id="vTri" aria-pressed="false">Triage view</button>
+    </div>
+  </header>
+
+  <!-- ================= REQUESTER FORM ================= -->
+  <main id="requester">
+    <h1 id="formTitle">Request Intake</h1>
+    <p class="lede">Share a need for review. Every request gets a reply.</p>
+    <div class="notes">
+      <p>IT support and system access requests go to IT.</p>
+      <p>Describe sensitive data rather than pasting it.</p>
+    </div>
+
+    <form id="f" novalidate>
+      <section class="step" aria-labelledby="s1">
+        <h2 id="s1"><span class="n">1</span>About the request</h2>
+        <div class="field row">
+          <div><label class="q" for="name">Your name</label><input type="text" id="name" autocomplete="name" required></div>
+          <div><label class="q" for="fn">Function</label>
+            <select id="fn" required>
+              <option value="">Choose one</option>
+              <option>Capital Projects</option><option>Capital Markets</option><option>Opex Finance</option>
+              <option>Tax</option><option>Risk, Insurance &amp; Compliance</option><option>Supply Chain</option>
+              <option>Treasury</option><option>Design &amp; Delivery</option><option>CorpDev</option><option>Other</option>
+            </select></div>
+        </div>
+        <div class="field"><label class="q" for="short">Short name for the request</label>
+          <input type="text" id="short" required placeholder="For example: Vendor on-time tracker"></div>
+        <div class="field"><label class="q" for="steward">Who would own it once it is built</label>
+          <span class="help" id="stewardHelp">The person in your function who keeps it running after delivery.</span>
+          <input type="text" id="steward" aria-describedby="stewardHelp" required></div>
+      </section>
+
+      <section class="step" aria-labelledby="s2">
+        <h2 id="s2"><span class="n">2</span>The need</h2>
+        <div class="field"><label class="q" for="need">What decision or task would this change, and why does it matter</label>
+          <span class="help" id="needHelp">Describe the need, not the tool. Asking why a few times usually gets there.</span>
+          <textarea id="need" aria-describedby="needHelp" required></textarea></div>
+        <div class="field"><span class="q" id="culL">Which Compass anchors and principles are at play <span class="opt">(optional)</span></span>
+          <div class="culture" role="group" aria-labelledby="culL" id="culture">
+            <fieldset><legend>Operational excellence</legend>
+              <label class="check"><input type="checkbox" value="Fastest to ready">Fastest to ready</label>
+              <label class="check"><input type="checkbox" value="Built to last">Built to last</label>
+              <label class="check"><input type="checkbox" value="Lowest total cost of ownership">Lowest total cost of ownership</label>
+            </fieldset>
+            <fieldset><legend>Product leadership</legend>
+              <label class="check"><input type="checkbox" value="Any prototype">Any prototype</label>
+              <label class="check"><input type="checkbox" value="Mass customized">Mass customized</label>
+              <label class="check"><input type="checkbox" value="Profoundly simple">Profoundly simple</label>
+            </fieldset>
+            <fieldset><legend>Key principles</legend>
+              <label class="check"><input type="checkbox" value="Poka yoke">Poka yoke</label>
+              <label class="check"><input type="checkbox" value="Pareto principle">Pareto principle</label>
+              <label class="check"><input type="checkbox" value="Crawl, walk, never run">Crawl, walk, never run</label>
+              <label class="check"><input type="checkbox" value="Power of incremental">Power of incremental</label>
+              <label class="check"><input type="checkbox" value="Performance paths">Performance paths</label>
+              <label class="check"><input type="checkbox" value="Failure on the path to success">Failure on the path to success</label>
+            </fieldset>
+          </div></div>
+        <div class="field"><label class="q" for="freq">How often does this need arise</label>
+          <select id="freq" required>
+            <option value="">Choose one</option>
+            <option>Once</option><option>Daily</option><option>Weekly</option><option>Monthly</option>
+            <option>Quarterly</option><option>Per project</option><option>Occasionally</option>
+            <option value="Other">Other</option>
+          </select>
+          <input type="text" id="freqOther" class="followup" placeholder="Describe how often" aria-label="How often this need arises, described" hidden></div>
+        <div class="field"><label class="q" for="effort">Roughly how long it takes <span class="opt">(optional)</span></label>
+          <input type="text" id="effort" placeholder="For example: half a day"></div>
+        <div class="field"><label class="q" for="miss">What goes wrong today, and what has a miss cost</label>
+          <span class="help" id="missHelp">A rough number helps, even an order of magnitude.</span>
+          <textarea id="miss" aria-describedby="missHelp" required></textarea></div>
+        <div class="field"><label class="q" for="users">Who uses the result <span class="opt">(optional)</span></label>
+          <input type="text" id="users" placeholder="Teams or roles"></div>
+      </section>
+
+      <section class="step" aria-labelledby="s3">
+        <h2 id="s3"><span class="n">3</span>Where the information lives</h2>
+        <p class="intro">Tick everything that applies. "In someone's head" is a real answer.</p>
+        <div class="field checks" role="group" aria-labelledby="s3" id="srcs">
+          <label class="check"><input type="checkbox" value="NetSuite">NetSuite</label>
+          <label class="check"><input type="checkbox" value="Procore">Procore</label>
+          <label class="check"><input type="checkbox" value="SharePoint or OneDrive files">SharePoint or OneDrive files</label>
+          <label class="check"><input type="checkbox" value="Excel models">Excel models</label>
+          <label class="check"><input type="checkbox" value="Email or Teams">Email or Teams</label>
+          <label class="check"><input type="checkbox" value="In someone's head">In someone's head</label>
+          <label class="check"><input type="checkbox" value="Not sure">Not sure</label>
+        </div>
+        <div class="field"><label class="q" for="srcOther">Anything else <span class="opt">(optional)</span></label>
+          <input type="text" id="srcOther"></div>
+      </section>
+
+      <section class="step" aria-labelledby="s4">
+        <h2 id="s4"><span class="n">4</span>Which of these is closest</h2>
+        <p class="intro">Pick the one that best describes the problem today.</p>
+        <div class="field">
+          <div class="tiles" role="radiogroup" aria-labelledby="s4" id="gap">
+            <label class="tile"><input type="radio" name="gap" value="Remember">
+              <span class="t">We answer it from scratch every time</span>
+              <span class="d">The answer existed before and gets rebuilt each cycle.</span></label>
+            <label class="tile"><input type="radio" name="gap" value="Verify">
+              <span class="t">We take it on trust</span>
+              <span class="d">Nobody checks it against the source or the last agreement.</span></label>
+            <label class="tile"><input type="radio" name="gap" value="See">
+              <span class="t">We can't see it clearly</span>
+              <span class="d">The data exists but is scattered, miscoded or hard to pull.</span></label>
+            <label class="tile"><input type="radio" name="gap" value="Guess">
+              <span class="t">We estimate it by hand</span>
+              <span class="d">Judgment fills in where a record or model should be.</span></label>
+          </div>
+          <div class="nofit"><label><input type="radio" name="gap" value="None fit">None of these fit</label></div>
+        </div>
+      </section>
+
+      <section class="step" aria-labelledby="s5">
+        <h2 id="s5"><span class="n">5</span>Sensitivity</h2>
+        <div class="field"><span class="q" id="sensL">Does it involve investor, customer, personnel or detailed financial data</span>
+          <div class="radios" role="radiogroup" aria-labelledby="sensL">
+            <label><input type="radio" name="sens" value="Yes">Yes</label>
+            <label><input type="radio" name="sens" value="No">No</label>
+            <label><input type="radio" name="sens" value="Not sure">Not sure</label>
+          </div></div>
+        <div class="field"><span class="q" id="wbL">Would it only read from a system like NetSuite or Procore, or write back to it</span>
+          <div class="radios" role="radiogroup" aria-labelledby="wbL">
+            <label><input type="radio" name="wb" value="Read only">Read only</label>
+            <label><input type="radio" name="wb" value="Writes back">Writes back</label>
+            <label><input type="radio" name="wb" value="Neither">Neither</label>
+            <label><input type="radio" name="wb" value="Not sure">Not sure</label>
+          </div></div>
+        <div class="field"><span class="help">Supporting files are welcome but not required. The reply will say where to send them.</span></div>
+      </section>
+
+      <div class="errbox" id="errs" role="alert" tabindex="-1"></div>
+      <div class="actions">
+        <button type="submit" class="btn">Submit request</button>
+        <span class="preview">Preview only. Nothing is sent from this page yet.</span>
+      </div>
+    </form>
+
+    <div class="done" id="done" tabindex="-1">
+      <h2>Request submitted</h2>
+      <p id="doneMsg"></p>
+      <p class="preview">In this preview nothing left the page. Where submissions land is still to be decided.</p>
+      <p style="margin-top:14px"><button type="button" class="btn quiet" id="another">Start another request</button></p>
+    </div>
+  </main>
+
+  <!-- ================= TRIAGE VIEW ================= -->
+  <main id="triage" hidden>
+    <h1>Triage</h1>
+    <p class="internal">Internal only. Requesters never see this. Build it as a separate, access-controlled view,
+      not a section of the public form.</p>
+
+    <section class="step" aria-labelledby="t1">
+      <h2 id="t1"><span class="n">1</span>The request</h2>
+      <div class="field sample"><dl id="sampleDl">
+        <dt>Request</dt><dd>Entity-level tax allocation check</dd>
+        <dt>From</dt><dd>Tax</dd>
+        <dt>Owner once built</dt><dd>Named by requester</dd>
+        <dt>Frequency</dt><dd>Per project</dd>
+        <dt>Closest gap</dt><dd>We take it on trust</dd>
+        <dt>Anchors and principles</dt><dd>Built to last, Poka yoke</dd>
+        <dt>Information lives in</dt><dd>NetSuite, Excel models, in someone's head</dd>
+        <dt>Sensitive data</dt><dd>Yes</dd>
+        <dt>System access</dt><dd>Read only</dd>
+      </dl></div>
+      <p class="intro" style="margin-top:8px">Sample record. Submitting the requester form fills this with that submission.</p>
+    </section>
+
+    <section class="step" aria-labelledby="t2">
+      <h2 id="t2"><span class="n">2</span>Business lens</h2>
+      <p class="intro">Same four lenses as the PMO intake, scored here rather than by the requester.</p>
+      <div class="field" id="lenses"></div>
+      <p class="scale-key">Minus three is strongly against, plus three strongly in favor.</p>
+    </section>
+
+    <section class="step" aria-labelledby="t3">
+      <h2 id="t3"><span class="n">3</span>Fit</h2>
+      <div class="field"><span class="q" id="rdL">Changes a recurring decision</span>
+        <div class="radios" role="radiogroup" aria-labelledby="rdL">
+          <label><input type="radio" name="rd">Yes</label><label><input type="radio" name="rd">No</label></div></div>
+      <div class="field"><span class="q" id="deL">The data exists</span>
+        <div class="radios" role="radiogroup" aria-labelledby="deL">
+          <label><input type="radio" name="de">Yes</label><label><input type="radio" name="de">Partly</label>
+          <label><input type="radio" name="de">No</label></div></div>
+      <div class="field"><span class="q" id="scL">Owner confirmed</span>
+        <div class="radios" role="radiogroup" aria-labelledby="scL">
+          <label><input type="radio" name="sc">Yes</label><label><input type="radio" name="sc">No</label></div></div>
+    </section>
+
+    <section class="step" aria-labelledby="t4">
+      <h2 id="t4"><span class="n">4</span>Outcome</h2>
+      <div class="field"><span class="q" id="dispL">Disposition</span>
+        <div class="radios" role="radiogroup" aria-labelledby="dispL">
+          <label><input type="radio" name="disp">Big rock</label><label><input type="radio" name="disp">Small rock</label>
+          <label><input type="radio" name="disp">Backlog</label><label><input type="radio" name="disp">Redirect</label>
+          <label><input type="radio" name="disp">Decline</label></div></div>
+      <div class="field row">
+        <div><label class="q" for="ddate">Decision date</label><input type="date" id="ddate"></div>
+        <div><label class="q" for="rto">Redirect to <span class="opt">(if redirected)</span></label><input type="text" id="rto"></div>
+      </div>
+      <div class="field"><label class="q" for="note">Note back to the requester</label>
+        <textarea id="note"></textarea></div>
+      <div class="actions"><button type="button" class="btn" id="saveT">Save outcome</button>
+        <span class="preview" id="savedMsg">Preview only.</span></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>compassdatacenters.com</span>
+    <span class="conf">Compass Datacenters confidential</span>
+    <span>Draft mockup, version 0.1</span>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var FORM_TITLE = 'Request Intake';            // single place to rename the form
+  document.getElementById('formTitle').textContent = FORM_TITLE;
+  document.title = FORM_TITLE + ' | Compass Datacenters';
+
+  var req = document.getElementById('requester'), tri = document.getElementById('triage');
+  var bReq = document.getElementById('vReq'), bTri = document.getElementById('vTri');
+  function show(which){
+    var t = which === 'tri';
+    tri.hidden = !t; req.hidden = t;
+    bTri.setAttribute('aria-pressed', t); bReq.setAttribute('aria-pressed', !t);
+    window.scrollTo(0,0);
+  }
+  bReq.onclick = function(){show('req')}; bTri.onclick = function(){show('tri')};
+
+  // business lens scales
+  var lensBox = document.getElementById('lenses');
+  ['Cost','Risk','Time','Benefit'].forEach(function(l){
+    var row = document.createElement('div'); row.className='lens';
+    var n = document.createElement('span'); n.className='name'; n.id='lens'+l; n.textContent=l;
+    var sc = document.createElement('div'); sc.className='scale'; sc.setAttribute('role','radiogroup');
+    sc.setAttribute('aria-labelledby','lens'+l);
+    [-3,-2,-1,0,1,2,3].forEach(function(v){
+      var lab=document.createElement('label'), i=document.createElement('input'), s=document.createElement('span');
+      i.type='radio'; i.name='lens-'+l; i.value=v; i.setAttribute('aria-label', l+' '+(v>0?'+'+v:v));
+      s.textContent = v>0 ? '+'+v : (v<0 ? '\u2212'+Math.abs(v) : '0');
+      lab.appendChild(i); lab.appendChild(s); sc.appendChild(lab);
+    });
+    row.appendChild(n); row.appendChild(sc); lensBox.appendChild(row);
+  });
+
+  var f = document.getElementById('f'), errs = document.getElementById('errs'), done = document.getElementById('done');
+  var freq = document.getElementById('freq'), freqOther = document.getElementById('freqOther');
+  freq.addEventListener('change', function(){
+    var other = freq.value === 'Other';
+    freqOther.hidden = !other;
+    if(other) freqOther.focus(); else { freqOther.value=''; freqOther.classList.remove('invalid'); }
+  });
+  function freqValue(){ return freq.value === 'Other' ? freqOther.value.trim() : freq.value; }
+  function val(id){ return document.getElementById(id).value.trim(); }
+  function picked(name){ var x = f.querySelector('input[name="'+name+'"]:checked'); return x ? x.value : ''; }
+  var required = [['name','Your name'],['fn','Function'],['short','Short name for the request'],
+                  ['steward','Who would own it once it is built'],['need','What decision or task this would change'],
+                  ['freq','How often this need arises'],['miss','What goes wrong today']];
+
+  f.addEventListener('submit', function(e){
+    e.preventDefault();
+    var missing = [];
+    required.forEach(function(r){
+      var el = document.getElementById(r[0]); var bad = !el.value.trim();
+      el.classList.toggle('invalid', bad); el.setAttribute('aria-invalid', bad);
+      if(bad) missing.push(r[1]);
+    });
+    var otherBad = freq.value === 'Other' && !freqOther.value.trim();
+    freqOther.classList.toggle('invalid', otherBad); freqOther.setAttribute('aria-invalid', otherBad);
+    if(otherBad) missing.push('How often this need arises, described');
+    if(!picked('gap')) missing.push('Which of the four is closest');
+    if(missing.length){
+      errs.innerHTML = '<strong>'+missing.length+' answer'+(missing.length>1?'s':'')+' needed before submitting:</strong><ul>'+
+        missing.map(function(m){return '<li>'+m+'</li>'}).join('')+'</ul>';
+      errs.classList.add('show'); errs.focus(); return;
+    }
+    errs.classList.remove('show');
+
+    var srcs = Array.prototype.map.call(document.querySelectorAll('#srcs input:checked'), function(c){return c.value});
+    if(val('srcOther')) srcs.push(val('srcOther'));
+    var gapText = {'Remember':'We answer it from scratch every time','Verify':'We take it on trust',
+                   'See':"We can't see it clearly",'Guess':'We estimate it by hand','None fit':'None of these fit'};
+    var rows = [['Request',val('short')],['From',val('fn')],['Owner once built',val('steward')],
+                ['Frequency',freqValue()],['Closest gap',gapText[picked('gap')]],
+                ['Anchors and principles', Array.prototype.map.call(document.querySelectorAll('#culture input:checked'),
+                   function(c){return c.value}).join(', ') || 'None selected'],
+                ['Information lives in',srcs.join(', ')||'Not given'],
+                ['Sensitive data',picked('sens')||'Not given'],['System access',picked('wb')||'Not given']];
+    var dl = document.getElementById('sampleDl'); dl.innerHTML='';
+    rows.forEach(function(r){ var dt=document.createElement('dt'),dd=document.createElement('dd');
+      dt.textContent=r[0]; dd.textContent=r[1]; dl.appendChild(dt); dl.appendChild(dd); });
+
+    document.getElementById('doneMsg').textContent =
+      '"'+val('short')+'" from '+val('fn')+' is in the queue for review. The outcome, and where to send any supporting files, will come back to '+val('name')+'.';
+    f.hidden = true; done.classList.add('show'); done.focus();
+  });
+
+  document.getElementById('another').onclick = function(){
+    f.reset(); freqOther.hidden = true;
+    f.querySelectorAll('.invalid').forEach(function(el){el.classList.remove('invalid')});
+    done.classList.remove('show'); f.hidden = false; window.scrollTo(0,0);
+  };
+  document.getElementById('saveT').onclick = function(){
+    document.getElementById('savedMsg').textContent = 'Outcome saved in this preview only.';
+  };
+})();
+</script>
+</body>
+</html>
