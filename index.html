@@ -21,8 +21,7 @@
     <h1 id="formTitle">Request Intake</h1>
     <p class="lede">Share a need for review. Every request gets a reply.</p>
     <div class="notes">
-      <p>IT support and system access requests go to IT.</p>
-      <p>Describe sensitive data rather than pasting it.</p>
+      <p>Please describe sensitive data.</p>
     </div>
 
     <form id="f" novalidate>
@@ -31,12 +30,12 @@
         <div class="field row">
           <div><label class="q" for="name">Your name</label><input type="text" id="name" autocomplete="name" required></div>
           <div><label class="q" for="fn">Function</label>
-            <select id="fn" required>
-              <option value="">Choose one</option>
+            <input type="text" id="fn" list="fnList" required autocomplete="off" placeholder="Choose or type your function">
+            <datalist id="fnList">
               <option>Capital Projects</option><option>Capital Markets</option><option>Opex Finance</option>
               <option>Tax</option><option>Risk, Insurance &amp; Compliance</option><option>Supply Chain</option>
-              <option>Treasury</option><option>Design &amp; Delivery</option><option>CorpDev</option><option>Other</option>
-            </select></div>
+              <option>Treasury</option><option>Design &amp; Delivery</option><option>CorpDev</option>
+            </datalist></div>
         </div>
         <div class="field"><label class="q" for="short">Short name for the request</label>
           <input type="text" id="short" required placeholder="For example: Vendor on-time tracker"></div>
@@ -47,10 +46,13 @@
 
       <section class="step" aria-labelledby="s2">
         <h2 id="s2"><span class="n">2</span>The need</h2>
-        <div class="field"><label class="q" for="need">What decision or task would this change, and why does it matter</label>
-          <span class="help" id="needHelp">Describe the need, not the tool. Asking why a few times usually gets there.</span>
-          <textarea id="need" aria-describedby="needHelp" required></textarea></div>
-        <div class="field"><span class="q" id="culL">Which Compass anchors and principles are at play <span class="opt">(optional)</span></span>
+        <div class="field"><span class="q" id="missL">What goes wrong today, and why does it matter</span>
+          <span class="help" id="missHelp">Describe the problem, not the solution. We will work out what the solution needs to look like. A rough number for what a miss has cost helps, even an order of magnitude.</span>
+          <textarea id="miss" aria-labelledby="missL" aria-describedby="missHelp" required></textarea></div>
+        <div class="field"><span class="q" id="solutionL">Envisioned solution <span class="opt">(entirely optional)</span></span>
+          <span class="help" id="solutionHelp">Only if you already have something in mind.</span>
+          <textarea id="solution" aria-labelledby="solutionL" aria-describedby="solutionHelp"></textarea></div>
+        <div class="field"><span class="q" id="culL">Culture factors at play</span>
           <div class="culture" role="group" aria-labelledby="culL" id="culture">
             <fieldset><legend>Operational excellence</legend>
               <label class="check"><input type="checkbox" value="Fastest to ready">Fastest to ready</label>
@@ -72,18 +74,13 @@
             </fieldset>
           </div></div>
         <div class="field"><label class="q" for="freq">How often does this need arise</label>
-          <select id="freq" required>
-            <option value="">Choose one</option>
+          <input type="text" id="freq" list="freqList" required autocomplete="off" placeholder="Choose or type how often">
+          <datalist id="freqList">
             <option>Once</option><option>Daily</option><option>Weekly</option><option>Monthly</option>
             <option>Quarterly</option><option>Per project</option><option>Occasionally</option>
-            <option value="Other">Other</option>
-          </select>
-          <input type="text" id="freqOther" class="followup" placeholder="Describe how often" aria-label="How often this need arises, described" hidden></div>
+          </datalist></div>
         <div class="field"><label class="q" for="effort">Roughly how long it takes <span class="opt">(optional)</span></label>
           <input type="text" id="effort" placeholder="For example: half a day"></div>
-        <div class="field"><label class="q" for="miss">What goes wrong today, and what has a miss cost</label>
-          <span class="help" id="missHelp">A rough number helps, even an order of magnitude.</span>
-          <textarea id="miss" aria-describedby="missHelp" required></textarea></div>
         <div class="field"><label class="q" for="users">Who uses the result <span class="opt">(optional)</span></label>
           <input type="text" id="users" placeholder="Teams or roles"></div>
       </section>
@@ -92,16 +89,18 @@
         <h2 id="s3"><span class="n">3</span>Where the information lives</h2>
         <p class="intro">Tick everything that applies. "In someone's head" is a real answer.</p>
         <div class="field checks" role="group" aria-labelledby="s3" id="srcs">
+          <label class="check"><input type="checkbox" value="Email or Teams">Email or Teams</label>
+          <label class="check"><input type="checkbox" value="Excel models">Excel models</label>
+          <label class="check"><input type="checkbox" value="In someone's head">In someone's head</label>
           <label class="check"><input type="checkbox" value="NetSuite">NetSuite</label>
+          <label class="check"><input type="checkbox" value="On paper &#129320;">On paper &#129320;</label>
           <label class="check"><input type="checkbox" value="Procore">Procore</label>
           <label class="check"><input type="checkbox" value="SharePoint or OneDrive files">SharePoint or OneDrive files</label>
-          <label class="check"><input type="checkbox" value="Excel models">Excel models</label>
-          <label class="check"><input type="checkbox" value="Email or Teams">Email or Teams</label>
-          <label class="check"><input type="checkbox" value="In someone's head">In someone's head</label>
           <label class="check"><input type="checkbox" value="Not sure">Not sure</label>
+          <label class="check"><input type="checkbox" id="srcOtherCk" value="Other">Other</label>
         </div>
-        <div class="field"><label class="q" for="srcOther">Anything else <span class="opt">(optional)</span></label>
-          <input type="text" id="srcOther"></div>
+        <span id="srcOtherL" style="position:absolute;width:1px;height:1px;overflow:hidden">Where else the information lives, described</span>
+        <input type="text" id="srcOther" class="followup" placeholder="Describe where else" aria-labelledby="srcOtherL" hidden>
       </section>
 
       <section class="step" aria-labelledby="s4">
@@ -173,7 +172,7 @@
         <dt>Owner once built</dt><dd>Named by requester</dd>
         <dt>Frequency</dt><dd>Per project</dd>
         <dt>Closest gap</dt><dd>We take it on trust</dd>
-        <dt>Anchors and principles</dt><dd>Built to last, Poka yoke</dd>
+        <dt>Culture factors</dt><dd>Built to last, Poka yoke</dd>
         <dt>Information lives in</dt><dd>NetSuite, Excel models, in someone's head</dd>
         <dt>Sensitive data</dt><dd>Yes</dd>
         <dt>System access</dt><dd>Read only</dd>
