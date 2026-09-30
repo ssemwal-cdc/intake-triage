@@ -1,0 +1,81 @@
+/* Floating progress rail. Loaded only by index.html. New file, no shared selectors
+   from styles.css are redefined here except the .wrap reserve-space overrides below,
+   which are scoped to the >=641px layout this rail needs. */
+:root{
+  --rail-onyx:#141E27; --rail-slate:#34444D; --rail-orange:#F37820; --rail-orange-ink:#B3530C;
+}
+
+#progressRail{
+  font-family:Arial,"Helvetica Neue",Helvetica,sans-serif;
+  box-sizing:border-box;
+}
+#progressRail *{box-sizing:border-box}
+#progressRail.rail-hidden{display:none}
+
+/* ---- shared building blocks ---- */
+#progressRail .rail-progress{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.12)}
+#progressRail .rail-track{height:8px;border-radius:999px;background:rgba(255,255,255,.18);overflow:hidden}
+#progressRail .rail-fill{height:100%;width:0%;background:var(--rail-orange);border-radius:999px;transition:width .25s ease}
+#progressRail .rail-meta{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:8px;font-size:12.5px}
+#progressRail #railPercent{color:var(--rail-orange);font-weight:700}
+#progressRail #railStatus{color:var(--rail-orange-ink);background:#fff;padding:1px 6px;border-radius:4px;font-weight:600}
+
+#progressRail .rail-step{
+  display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  border:0;background:transparent;color:#fff;cursor:pointer;
+  font:inherit;font-size:13.5px;padding:10px 16px;line-height:1.25;
+}
+#progressRail .rail-step .rail-num{
+  flex:0 0 auto;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;border:1.5px solid rgba(255,255,255,.55);color:#fff;
+}
+#progressRail .rail-step .rail-label{flex:1 1 auto;color:#fff}
+#progressRail .rail-step .rail-check{flex:0 0 auto;width:16px;text-align:center;color:var(--rail-orange);opacity:0;font-weight:700}
+#progressRail .rail-step[data-state="done"] .rail-num{background:var(--rail-orange);border-color:var(--rail-orange);color:var(--rail-onyx)}
+#progressRail .rail-step[data-state="done"] .rail-check{opacity:1}
+#progressRail .rail-step[data-state="partial"] .rail-num{border-color:var(--rail-orange);color:var(--rail-orange)}
+#progressRail .rail-step.is-current{background:rgba(255,255,255,.08)}
+#progressRail .rail-step.is-current .rail-label{color:var(--rail-orange)}
+#progressRail .rail-step:hover{background:rgba(255,255,255,.06)}
+#progressRail .rail-step:focus-visible{outline:2px solid var(--rail-orange);outline-offset:-2px}
+
+/* ---- >=641px: vertical rail, sticky, reserved as its own column ---- */
+@media (min-width:641px){
+  body{display:flex;align-items:flex-start;justify-content:center;gap:28px;flex-wrap:wrap}
+  .wrap{margin:0;min-width:0;flex:1 1 760px}
+  #progressRail{
+    flex:0 0 240px;position:sticky;top:20px;align-self:flex-start;
+    background:var(--rail-onyx);border-radius:10px;overflow:hidden;
+    max-height:calc(100vh - 40px);overflow-y:auto;
+    box-shadow:0 8px 24px rgba(20,30,39,.25);
+  }
+  #progressRail .rail-dots{display:none}
+}
+
+/* ---- <=640px: slim sticky top bar with dots ---- */
+@media (max-width:640px){
+  body{padding-top:0}
+  #progressRail{
+    position:sticky;top:0;z-index:50;width:100%;
+    background:var(--rail-onyx);
+    padding-top:env(safe-area-inset-top);
+    box-shadow:0 2px 10px rgba(20,30,39,.25);
+  }
+  #progressRail .rail-steps{display:none}
+  #progressRail .rail-progress{border-bottom:0;padding:8px 14px 6px}
+  #progressRail .rail-dots{display:flex;justify-content:center;gap:10px;padding:0 14px 10px}
+  #progressRail .rail-dot-btn{
+    border:0;background:transparent;padding:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  #progressRail .rail-dot-btn:focus-visible{outline:2px solid var(--rail-orange);outline-offset:1px;border-radius:50%}
+  #progressRail .rail-dot{
+    width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.35);border:1.5px solid rgba(255,255,255,.55);
+  }
+  #progressRail .rail-dot-btn[data-state="done"] .rail-dot{background:var(--rail-orange);border-color:var(--rail-orange)}
+  #progressRail .rail-dot-btn[data-state="partial"] .rail-dot{background:transparent;border-color:var(--rail-orange)}
+  #progressRail .rail-dot-btn.is-current .rail-dot{box-shadow:0 0 0 3px rgba(243,120,32,.35)}
+}
+
+@media (prefers-reduced-motion:reduce){
+  #progressRail .rail-fill{transition:none}
+}
