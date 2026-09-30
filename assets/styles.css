@@ -31,8 +31,11 @@
   input[type=text],input[type=date],select,textarea{width:100%;font:inherit;color:var(--onyx);
        padding:10px 12px;border:1px solid #AEB6BB;border-radius:4px;background:var(--white)}
   textarea{min-height:96px;resize:vertical}
-  input:focus,select:focus,textarea:focus,button:focus-visible,.tile:focus-within,
-  .check:focus-within,.radios label:focus-within{outline:3px solid rgba(243,120,32,.45);outline-offset:1px;border-color:var(--orange)}
+  input[type=text]:focus,input[type=date]:focus,select:focus,textarea:focus,button:focus-visible{
+       outline:3px solid rgba(243,120,32,.45);outline-offset:1px;border-color:var(--orange)}
+  input[type=checkbox],input[type=radio]{outline:none}
+  .tile:has(input:focus-visible),.check:has(input:focus-visible),
+  .radios label:has(input:focus-visible){outline:3px solid rgba(243,120,32,.45);outline-offset:1px;border-color:var(--orange)}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   .checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}
   .check{display:flex;gap:10px;align-items:flex-start;font-size:15px;padding:4px 0}
@@ -81,6 +84,11 @@
   .preview{font-size:13.5px;color:var(--muted)}
 
   /* triage view */
+  .filelist{list-style:none;margin:0 0 20px 1.95em;padding:0;display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto}
+  .filelist button{font:inherit;font-size:14.5px;text-align:left;background:var(--white);
+       border:1px solid #AEB6BB;border-radius:4px;padding:8px 12px;cursor:pointer;width:100%}
+  .filelist button:hover{border-color:var(--onyx)}
+  .filelist button[aria-current="true"]{border-color:var(--onyx);background:var(--wash);font-weight:700}
   .internal{background:var(--wash);border-radius:6px;padding:14px 16px;font-size:14.5px;
             color:var(--slate);margin:0 0 28px}
   .sample{border:1px solid var(--line);border-radius:6px;padding:16px 18px;margin-bottom:8px}
@@ -112,7 +120,7 @@
     h1{font-size:28px}
     .row,.tiles,.checks,.culture{grid-template-columns:1fr}
     .culture{gap:12px}
-    .field,.step .intro,.actions,.errbox{margin-left:0}
+    .field,.step .intro,.actions,.errbox,.filelist{margin-left:0}
     header.top{flex-direction:column;align-items:flex-start}
     .sample dl{grid-template-columns:1fr}
     .lens{grid-template-columns:1fr}
