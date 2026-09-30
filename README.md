@@ -63,7 +63,7 @@ answer is `""` or `[]`. `triage` starts `null`. It fills in later, in place, fro
   "owner": "Jordan Lee",
   "whatGoesWrong": "We re-check vendor terms by hand every month.",
   "envisionedSolution": "",
-  "cultureFactors": ["Built to last", "Poka yoke"],
+  "cultureFactors": ["Built to Last", "Poka Yoke"],
   "frequency": "Monthly",
   "effort": "",
   "users": "",

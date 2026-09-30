@@ -189,7 +189,7 @@ async function run(){
       await otherCk.uncheck();
 
       // checkbox toggles: culture factor on/off
-      const cultureBox = page.locator('#culture input[value="Poka yoke"]');
+      const cultureBox = page.locator('#culture input[value="Poka Yoke"]');
       await cultureBox.check();
       ok('culture checkbox checks', await cultureBox.isChecked());
       await cultureBox.uncheck();
@@ -248,7 +248,7 @@ async function run(){
         decoded.owner === 'Jordan Lee' &&
         decoded.whatGoesWrong === 'We re-check vendor terms by hand every month.' &&
         decoded.envisionedSolution === '' &&
-        Array.isArray(decoded.cultureFactors) && decoded.cultureFactors.includes('Poka yoke') &&
+        Array.isArray(decoded.cultureFactors) && decoded.cultureFactors.includes('Poka Yoke') &&
         decoded.frequency === 'Monthly' &&
         decoded.effort === '' && decoded.users === '' &&
         Array.isArray(decoded.informationLivesIn) &&
