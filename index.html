@@ -18,7 +18,7 @@
     <h1 id="formTitle">Request Intake</h1>
     <p class="lede">Share a need for review. Every request gets a reply.</p>
     <div class="notes">
-      <p>Please describe sensitive data.</p>
+      <p>Please describe sensitive data rather than pasting.</p>
     </div>
 
     <form id="f" novalidate>
@@ -32,8 +32,7 @@
         <div class="field"><label class="q" for="short">Short name for the request</label><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
           <input type="text" id="short" required placeholder="For example: Vendor on-time tracker"></div>
         <div class="field"><label class="q" for="steward">Who would own it once it is built</label><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
-          <span class="help" id="stewardHelp">The person in your function who keeps it running after delivery.</span>
-          <input type="text" id="steward" aria-describedby="stewardHelp" required></div>
+          <input type="text" id="steward" required></div>
       </section>
 
       <section class="step" aria-labelledby="s2">
@@ -46,17 +45,17 @@
           <textarea id="solution" aria-labelledby="solutionL" aria-describedby="solutionHelp"></textarea></div>
         <div class="field"><span class="q" id="culL">Culture factors at play</span>
           <div class="culture" role="group" aria-labelledby="culL" id="culture">
-            <fieldset><legend>Operational excellence</legend>
+            <fieldset><legend>Operational Excellence</legend>
               <label class="check"><input type="checkbox" value="Fastest to ready">Fastest to ready</label>
               <label class="check"><input type="checkbox" value="Built to last">Built to last</label>
               <label class="check"><input type="checkbox" value="Lowest total cost of ownership">Lowest total cost of ownership</label><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
             </fieldset>
-            <fieldset><legend>Product leadership</legend>
+            <fieldset><legend>Product Leadership</legend>
               <label class="check"><input type="checkbox" value="Any prototype">Any prototype</label>
               <label class="check"><input type="checkbox" value="Mass customized">Mass customized</label>
               <label class="check"><input type="checkbox" value="Profoundly simple">Profoundly simple</label>
             </fieldset>
-            <fieldset><legend>Key principles</legend>
+            <fieldset><legend>Key Principles</legend>
               <label class="check"><input type="checkbox" value="Poka yoke">Poka yoke</label>
               <label class="check"><input type="checkbox" value="Pareto principle">Pareto principle</label>
               <label class="check"><input type="checkbox" value="Crawl, walk, never run">Crawl, walk, never run</label>
