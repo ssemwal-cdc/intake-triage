@@ -15,7 +15,7 @@ Set these when publishing, in the Artifact tool's `capabilities` parameter:
     "rules": [
       { "path": "", "read": "view", "write": "admin" },
       { "path": "requests", "read": "admin", "write": "admin" },
-      { "path": "requests/{self}", "write": "interact" },
+      { "path": "requests/{self}", "read": "interact", "write": "interact" },
       { "path": "triage", "read": "admin", "write": "admin" }
     ]
   },
