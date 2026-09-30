@@ -11,3 +11,13 @@ Status: open. Needs the owner's pick.
 | monday.com board (API) | Compass already uses it for tracking; triage as board columns | Another system's auth and limits; data leaves M365 |
 
 Pick this before the submit-adapter work lands, so the adapter targets a real destination.
+
+## Proposed: GitHub repo storage (owner's direction, pending confirmation)
+
+Governed by the threat-model ruling (no malicious users; submissions not readily visible).
+
+- Public Pages repo serves `index.html`. On submit it writes one JSON file to a separate private repo (e.g. `intake-submissions`) through the GitHub contents API.
+- Token: fine-grained, that one private repo only, contents read and write. Embedded in page code.
+- `triage.html` on its own unlisted link reads the private repo and writes the outcome back.
+- Risk: GitHub secret scanning revokes tokens found in public repos, or push protection refuses the commit. Storing the token split so the scanner misses it is an owner call.
+- Open: which GitHub org or account owns both repos; whose account the token belongs to.
