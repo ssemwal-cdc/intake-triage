@@ -10,3 +10,9 @@ Status: open. Needs the owner's pick.
 | GitHub Pages (private org, Enterprise) | Files as-is, deploy on push | Access control is GitHub accounts, not Entra; poor fit for non-developers |
 
 The public form and the triage view need different access. Whichever host is picked must lock `triage.html` to the CFO team.
+
+## GitHub Pages plus repo storage (raised by the owner)
+
+- Pages serves the files. It cannot write to the repo without a token, and a token in page code is public.
+- Needs a relay (Power Automate flow or small serverless function) that holds the token and commits each submission as JSON. Or the form opens a prefilled GitHub issue; then every requester needs a GitHub account.
+- Code is not sensitive; submissions can be (step 5 asks about investor, customer, personnel data). Public Pages lets anyone with the triage link read them. Private Pages needs GitHub Enterprise Cloud and a GitHub account per reader.
