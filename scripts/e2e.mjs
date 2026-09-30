@@ -132,6 +132,10 @@ async function run(){
       let errItems = await page.locator('#errs li').count();
       ok('7 required errors shown when form is empty', errItems === 7);
 
+      // clicking the "What goes wrong today" label text focuses #miss (real <label for="miss">)
+      await page.locator('label[for=miss]').click();
+      ok('clicking the miss label focuses #miss', await page.locator('#miss').evaluate((el) => el === document.activeElement));
+
       // focus ring: mouse click vs keyboard Tab on a radio wrapper (.tile)
       const firstTile = page.locator('.tile').first();
       await firstTile.click();

@@ -29,18 +29,18 @@
           <div><label class="q" for="fn">Function</label>
             <input type="text" id="fn" required autocomplete="off" placeholder="Type your function"></div>
         </div>
-        <div class="field"><label class="q" for="short">Short name for the request</label>
+        <div class="field"><label class="q" for="short">Short name for the request</label><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
           <input type="text" id="short" required placeholder="For example: Vendor on-time tracker"></div>
-        <div class="field"><label class="q" for="steward">Who would own it once it is built</label>
+        <div class="field"><label class="q" for="steward">Who would own it once it is built</label><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
           <span class="help" id="stewardHelp">The person in your function who keeps it running after delivery.</span>
           <input type="text" id="steward" aria-describedby="stewardHelp" required></div>
       </section>
 
       <section class="step" aria-labelledby="s2">
         <h2 id="s2"><span class="n">2</span>The need</h2>
-        <div class="field"><span class="q" id="missL">What goes wrong today, and why does it matter</span>
+        <div class="field"><label class="q" for="miss">What goes wrong today, and why does it matter</label><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
           <span class="help" id="missHelp">Describe the problem, not the solution. We will work out what the solution needs to look like. A rough number for what a miss has cost helps, even an order of magnitude.</span>
-          <textarea id="miss" aria-labelledby="missL" aria-describedby="missHelp" required></textarea></div>
+          <textarea id="miss" aria-describedby="missHelp" required></textarea></div>
         <div class="field"><span class="q" id="solutionL">Envisioned solution <span class="opt">(entirely optional)</span></span>
           <span class="help" id="solutionHelp">Only if you already have something in mind.</span>
           <textarea id="solution" aria-labelledby="solutionL" aria-describedby="solutionHelp"></textarea></div>
@@ -49,7 +49,7 @@
             <fieldset><legend>Operational excellence</legend>
               <label class="check"><input type="checkbox" value="Fastest to ready">Fastest to ready</label>
               <label class="check"><input type="checkbox" value="Built to last">Built to last</label>
-              <label class="check"><input type="checkbox" value="Lowest total cost of ownership">Lowest total cost of ownership</label>
+              <label class="check"><input type="checkbox" value="Lowest total cost of ownership">Lowest total cost of ownership</label><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
             </fieldset>
             <fieldset><legend>Product leadership</legend>
               <label class="check"><input type="checkbox" value="Any prototype">Any prototype</label>
@@ -62,18 +62,18 @@
               <label class="check"><input type="checkbox" value="Crawl, walk, never run">Crawl, walk, never run</label>
               <label class="check"><input type="checkbox" value="Power of incremental">Power of incremental</label>
               <label class="check"><input type="checkbox" value="Performance paths">Performance paths</label>
-              <label class="check"><input type="checkbox" value="Failure on the path to success">Failure on the path to success</label>
+              <label class="check"><input type="checkbox" value="Failure on the path to success">Failure on the path to success</label><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
             </fieldset>
           </div></div>
-        <div class="field"><label class="q" for="freq">How often does this need arise</label>
+        <div class="field"><label class="q" for="freq">How often does this need arise</label><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
           <input type="text" id="freq" list="freqList" required autocomplete="off" placeholder="Choose or type how often">
           <datalist id="freqList">
             <option>Once</option><option>Daily</option><option>Weekly</option><option>Monthly</option>
             <option>Quarterly</option><option>Per project</option><option>Occasionally</option>
           </datalist></div>
-        <div class="field"><label class="q" for="effort">Roughly how long it takes <span class="opt">(optional)</span></label>
+        <div class="field"><label class="q" for="effort">Roughly how long it takes <span class="opt">(optional)</span></label><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
           <input type="text" id="effort" placeholder="For example: half a day"></div>
-        <div class="field"><label class="q" for="users">Who uses the result <span class="opt">(optional)</span></label>
+        <div class="field"><label class="q" for="users">Who uses the result <span class="opt">(optional)</span></label><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
           <input type="text" id="users" placeholder="Teams or roles"></div>
       </section>
 
@@ -91,8 +91,8 @@
           <label class="check"><input type="checkbox" value="Not sure">Not sure</label>
           <label class="check"><input type="checkbox" id="srcOtherCk" value="Other">Other</label>
         </div>
-        <span id="srcOtherL" style="position:absolute;width:1px;height:1px;overflow:hidden">Where else the information lives, described</span>
-        <input type="text" id="srcOther" class="followup" placeholder="Describe where else" aria-labelledby="srcOtherL" hidden>
+        <!-- ste-disable-next-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
+        <input type="text" id="srcOther" class="followup" placeholder="Describe where else" aria-label="Where else the information lives, described" hidden>
       </section>
 
       <section class="step" aria-labelledby="s4">
@@ -101,16 +101,16 @@
         <div class="field">
           <div class="tiles" role="radiogroup" aria-labelledby="s4" id="gap">
             <label class="tile"><input type="radio" name="gap" value="Remember">
-              <span class="t">We answer it from scratch every time</span>
+              <span class="t">We answer it from scratch every time</span><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
               <span class="d">The answer existed before and gets rebuilt each cycle.</span></label>
             <label class="tile"><input type="radio" name="gap" value="Verify">
-              <span class="t">We take it on trust</span>
+              <span class="t">We take it on trust</span><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
               <span class="d">Nobody checks it against the source or the last agreement.</span></label>
             <label class="tile"><input type="radio" name="gap" value="See">
-              <span class="t">We can't see it clearly</span>
+              <span class="t">We can't see it clearly</span><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
               <span class="d">The data exists but is scattered, miscoded or hard to pull.</span></label>
             <label class="tile"><input type="radio" name="gap" value="Guess">
-              <span class="t">We estimate it by hand</span>
+              <span class="t">We estimate it by hand</span><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
               <span class="d">Judgment fills in where a record or model should be.</span></label>
           </div>
           <div class="nofit"><label><input type="radio" name="gap" value="None fit">None of these fit</label></div>
