@@ -1,6 +1,6 @@
 # Hosting
 
-Status: open. Needs the owner's pick.
+Status: ruled 2026-09-30, GitHub Pages (public site repo), submissions in a private repo. See submission-destination and threat-model.
 
 | Option | Gain | Loss |
 |---|---|---|
