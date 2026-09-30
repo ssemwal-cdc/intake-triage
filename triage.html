@@ -21,9 +21,45 @@
       not a section of the public form.</p>
 
     <section class="step" aria-labelledby="t0">
-      <h2 id="t0"><span class="n">&#8226;</span>Submissions</h2>
+      <h2 id="t0"><span class="n">&#8226;</span>Requests</h2>
       <p class="intro" id="listNote">Preview only.</p>
-      <ul class="filelist" id="fileList"></ul>
+      <div class="reqFilters">
+        <label class="reqFilter"><span class="q">Status</span>
+          <select id="fStatus">
+            <option value="">All</option>
+            <option value="Not triaged">Not triaged</option>
+            <option value="Big rock">Big rock</option>
+            <option value="Small rock">Small rock</option>
+            <option value="Backlog">Backlog</option>
+            <option value="Redirect">Redirect</option>
+            <option value="Decline">Decline</option>
+          </select>
+        </label>
+        <label class="reqFilter"><span class="q">Function</span>
+          <select id="fFunction"><option value="">All</option></select>
+        </label>
+        <label class="reqFilter reqSearch"><span class="q">Search</span>
+          <input type="text" id="fSearch" placeholder="Short name, requester, function, problem...">
+        </label>
+      </div>
+      <p class="reqCount" id="reqCount">No requests yet.</p>
+      <div class="reqTableWrap">
+        <table class="reqTable" id="reqTable">
+          <thead><tr>
+            <th data-col="short" data-type="text" tabindex="0" aria-sort="none">Request</th>
+            <th data-col="function" data-type="text" tabindex="0" aria-sort="none">Function</th>
+            <th data-col="requester" data-type="text" tabindex="0" aria-sort="none">Requester</th>
+            <th data-col="submitted" data-type="date" tabindex="0" aria-sort="descending">Submitted</th>
+            <th data-col="status" data-type="text" tabindex="0" aria-sort="none">Status</th>
+            <th data-col="cost" data-type="num" tabindex="0" aria-sort="none">Cost</th>
+            <th data-col="risk" data-type="num" tabindex="0" aria-sort="none">Risk</th>
+            <th data-col="time" data-type="num" tabindex="0" aria-sort="none">Time</th>
+            <th data-col="benefit" data-type="num" tabindex="0" aria-sort="none">Benefit</th>
+            <th data-col="total" data-type="num" tabindex="0" aria-sort="none">Total</th>
+          </tr></thead>
+          <tbody id="reqBody"></tbody>
+        </table>
+      </div>
     </section>
 
     <section class="step" aria-labelledby="t1">

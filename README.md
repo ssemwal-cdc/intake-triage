@@ -14,8 +14,9 @@ No framework, no build step, no dependencies in the site itself.
   the payload to the console and resolves. This is the local preview path. Token set: PUTs the
   payload as a JSON file to the submissions repo, using the GitHub contents API.
 - `assets/app.js` — the requester form's behaviour: validation, payload build, submit handling.
-- `assets/triage.js` — the triage view's behaviour: list, open, save outcome. With no token, it
-  shows a sample record and "Preview only."
+- `assets/triage.js` — the triage view's behaviour: a Requests table (filter, search, sort),
+  open a row, save outcome. The row's status and scores update in place after a save, no
+  reload. With no token, it shows a sample record and "Preview only."
 - `assets/compass-logo.png` — header logo.
 - `assets/icon-32.png`, `assets/icon-180.png` — browser-tab icons, copied from `q_max`'s `public/`.
 - `docs/source/request-intake-mockup.html` — the original single-file mockup, kept for reference.
@@ -119,7 +120,9 @@ Coverage:
 - A successful submit. The decoded JSON is checked against the expected object, including the
   🤨 emoji.
 - A failed submit. Answers stay in the form and the error shows.
-- The triage list, open and save round-trip.
+- The Requests table: status/function/search filters, combined, and sort per column type.
+  The "N of M requests" count and both empty states. Row open by click and by Enter. The
+  save round-trip, updating the row in place.
 - The empty-token preview path.
 - The absence of "triage" in `index.html`.
 - The mouse-vs-keyboard focus ring.
