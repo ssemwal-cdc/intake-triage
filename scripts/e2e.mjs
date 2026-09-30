@@ -575,6 +575,79 @@ async function run(){
       await tpContext.close();
       await pContext.close();
     }
+
+    // ---- progress rail (index.html only; assets/rail.js + assets/rail.css) ----
+    for (const width of [1280, 900, 375]) {
+      section(`Viewport ${width}px — progress rail`);
+      const context = await browser.newContext({ viewport: { width, height: 900 } });
+      const page = await context.newPage();
+      await withConfig(page, base, CONFIG_NO_TOKEN);
+      await page.goto(base + '/index.html');
+
+      const railHeadings = await page.locator('#f .step h2').evaluateAll((els) =>
+        els.map((el) => { const c = el.cloneNode(true); c.querySelector('.n')?.remove(); return c.textContent.trim(); })
+      );
+      const stepButtons = width <= 640 ? page.locator('#progressRail .rail-dot-btn') : page.locator('#progressRail .rail-step');
+      ok('rail has 5 steps', await stepButtons.count() === 5);
+      if (width > 640) {
+        const railLabels = await page.locator('#progressRail .rail-label').allInnerTexts();
+        ok('rail step names come from the h2 headings', JSON.stringify(railLabels) === JSON.stringify(railHeadings));
+      } else {
+        const ariaLabels = await stepButtons.evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')));
+        ok('rail dot names come from the h2 headings', JSON.stringify(ariaLabels) === JSON.stringify(railHeadings));
+      }
+
+      ok('no horizontal scroll', await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+      if (width <= 640) {
+        ok('slim top bar shows at this width', await page.locator('#progressRail').evaluate((el) => getComputedStyle(el).position === 'sticky' && el.getBoundingClientRect().top === 0));
+      }
+
+      // clicking step 4 scrolls section 4 into view and moves focus to its heading
+      await stepButtons.nth(3).click();
+      await page.waitForFunction(() => Math.abs(document.getElementById('s4').getBoundingClientRect().top) < 120, { timeout: 3000 }).catch(() => {});
+      ok('clicking step 4 scrolls section 4 into view',
+        await page.evaluate(() => Math.abs(document.getElementById('s4').getBoundingClientRect().top) < 120));
+      ok('clicking step 4 focuses its heading', await page.locator('#s4').evaluate((el) => el === document.activeElement));
+
+      // step buttons never submit the form
+      ok('step buttons are type=button', (await page.locator(width <= 640 ? '#progressRail .rail-dot-btn' : '#progressRail .rail-step').evaluateAll((els) => els.every((el) => el.getAttribute('type') === 'button'))));
+
+      // filling each required field raises percent 0 -> 100, ending in "Ready to submit"
+      const percentText = () => page.locator('#railPercent').innerText();
+      ok('percent starts at 0%', (await percentText()) === '0%');
+      await page.fill('#name', 'Rail Tester');
+      await page.fill('#fn', 'Ops');
+      await page.fill('#short', 'Rail check');
+      await page.fill('#steward', 'Rail Tester');
+      await page.fill('#miss', 'Testing the rail.');
+      await page.fill('#freq', 'Weekly');
+      ok('percent below 100 before gap is picked', parseInt(await percentText(), 10) > 0 && parseInt(await percentText(), 10) < 100);
+      await radioLabel(page, 'gap', 'See').click();
+      ok('percent reaches 100% once all 7 required answers are given', (await percentText()) === '100%');
+      ok('"Ready to submit" shown at 100%', (await page.locator('#railStatus').innerText()) === 'Ready to submit');
+
+      // scroll-spy marks aria-current on the section in view (checked on the visible
+      // representation only: the rail keeps a mirrored, display:none dot/step list in
+      // sync for the other breakpoint, and that hidden twin also carries the attribute).
+      const visibleCurrentSel = width <= 640 ? '#progressRail .rail-dot-btn[aria-current="step"]' : '#progressRail .rail-step[aria-current="step"]';
+      await page.evaluate(() => document.getElementById('s1').scrollIntoView());
+      await page.waitForFunction((sel) => document.querySelectorAll(sel).length === 1, visibleCurrentSel, { timeout: 3000 }).catch(() => {});
+      const currentCount = await page.locator(visibleCurrentSel).count();
+      ok('scroll-spy marks exactly one step as aria-current', currentCount === 1);
+      ok('scroll-spy current step is step 1 after scrolling to section 1',
+        await page.locator(visibleCurrentSel).first().evaluate((el) => /1|About the Request/.test(el.textContent || el.getAttribute('aria-label') || '')));
+
+      // submit and confirm the rail hides, then reappears at 0% after "Start another request"
+      await page.click('button[type=submit]');
+      await page.waitForSelector('#done.show', { timeout: 5000 });
+      ok('rail hides after successful submit', !(await page.locator('#progressRail').isVisible()));
+      await page.click('#another');
+      await page.waitForTimeout(50);
+      ok('rail shows again after "Start another request"', await page.locator('#progressRail').isVisible());
+      ok('rail is back at 0% after "Start another request"', (await percentText()) === '0%');
+
+      await context.close();
+    }
   } finally {
     await browser.close();
     server.kill();
