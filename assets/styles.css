@@ -83,17 +83,26 @@
   .done p{margin:6px 0}
   .preview{font-size:13.5px;color:var(--muted)}
 
-  /* triage view */
-  .filelist{list-style:none;margin:0 0 20px 1.95em;padding:0;display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto}
-  .filelist button{font:inherit;text-align:left;background:var(--white);
-       border:1px solid #AEB6BB;border-radius:4px;padding:10px 12px;cursor:pointer;width:100%;
-       display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px}
-  .filelist button:hover{border-color:var(--onyx)}
-  .filelist button[aria-current="true"]{border-color:var(--onyx);background:var(--wash)}
-  .filelist .fname{font-weight:700;font-size:15px;flex:1 0 100%}
-  .filelist .fmeta{font-size:13.5px;color:var(--muted);flex:1 1 auto}
-  .filelist .ftag{font-size:12.5px;color:var(--slate);border:1px solid var(--line);border-radius:999px;
-       padding:2px 10px;white-space:nowrap}
+  /* triage view: requests table */
+  .reqFilters{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin:0 0 16px 1.95em}
+  .reqFilter .q{font-size:13.5px;margin-bottom:4px}
+  .reqFilter select,.reqFilter input[type=text]{font:inherit;font-size:14.5px;padding:8px 10px;
+       border:1px solid #AEB6BB;border-radius:4px;background:var(--white);color:var(--onyx);width:auto}
+  .reqSearch{flex:1 1 220px}
+  .reqSearch input{width:100%}
+  .reqCount{margin:0 0 10px 1.95em;color:var(--muted);font-size:13.5px}
+  .reqTableWrap{margin:0 0 20px 1.95em;overflow-x:auto;border:1px solid var(--line);border-radius:6px}
+  table.reqTable{border-collapse:collapse;width:100%;min-width:760px;font-size:14px}
+  .reqTable th,.reqTable td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  .reqTable thead th{background:var(--wash);font-weight:700;cursor:pointer;user-select:none}
+  .reqTable thead th:focus-visible{outline:3px solid rgba(243,120,32,.45);outline-offset:-3px}
+  .reqTable th[aria-sort="ascending"]::after{content:" \2191"}
+  .reqTable th[aria-sort="descending"]::after{content:" \2193"}
+  .reqTable th[data-type="num"],.reqTable td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .reqTable tbody tr{cursor:pointer}
+  .reqTable tbody tr:hover{background:var(--wash)}
+  .reqTable tbody tr[aria-current="true"]{background:var(--wash);outline:2px solid var(--onyx);outline-offset:-2px}
+  .reqTable tbody tr:focus-visible{outline:3px solid rgba(243,120,32,.45);outline-offset:-3px}
   .internal{background:var(--wash);border-radius:6px;padding:14px 16px;font-size:14.5px;
             color:var(--slate);margin:0 0 28px}
   .sample{border:1px solid var(--line);border-radius:6px;padding:16px 18px;margin-bottom:8px}
@@ -125,7 +134,9 @@
     h1{font-size:28px}
     .row,.tiles,.checks,.culture{grid-template-columns:1fr}
     .culture{gap:12px}
-    .field,.step .intro,.actions,.errbox,.filelist{margin-left:0}
+    .field,.step .intro,.actions,.errbox{margin-left:0}
+    .reqFilters{flex-direction:column;align-items:stretch;margin-left:0}
+    .reqCount,.reqTableWrap{margin-left:0}
     header.top{flex-direction:column;align-items:flex-start}
     .sample dl{grid-template-columns:1fr}
     .lens{grid-template-columns:1fr}

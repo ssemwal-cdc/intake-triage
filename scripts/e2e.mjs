@@ -70,7 +70,15 @@ async function rowValue(page, label){
   }, label);
 }
 async function selectRecordByName(page, name){
-  await page.locator('#fileList button').filter({ hasText: name }).first().click();
+  await page.locator('#reqBody tr').filter({ hasText: name }).first().click();
+}
+async function tableRowTexts(page){
+  return page.locator('#reqBody tr').evaluateAll((rows) =>
+    rows.map((r) => Array.from(r.children).map((td) => td.textContent))
+  );
+}
+async function headerAriaSort(page, col){
+  return page.locator(`#reqTable th[data-col="${col}"]`).getAttribute('aria-sort');
 }
 
 async function routeGithub(page, repo, { failNextPut = false } = {}){
@@ -345,28 +353,105 @@ async function run(){
 
       await context.close();
 
-      // ---- triage: list, open, save, reload ----
+      // ---- triage: requests table — list, filter, sort, search, open, save, reload ----
       section(`Viewport ${width}px — triage (token path)`);
       const tContext = await browser.newContext({ viewport: { width, height: 900 } });
       const tPage = await tContext.newPage();
       await withConfig(tPage, base, CONFIG_WITH_TOKEN);
       await routeGithub(tPage, repo);
       await tPage.goto(base + '/triage.html');
-      await tPage.waitForSelector('#fileList button');
-      const listCount = await tPage.locator('#fileList button').count();
-      ok('triage lists every submitted and synthetic file', listCount === 7);
-      const pickerHtml = await tPage.locator('#fileList').innerHTML();
-      ok('picker shows no raw ".json" filename text', !/\.json/i.test(pickerHtml));
-      const pickerText = await tPage.locator('#fileList').innerText();
-      ok('picker shows short name, function, requester, date', /Vendor on-time tracker/.test(pickerText) &&
+      await tPage.waitForSelector('#reqBody tr');
+      const listCount = await tPage.locator('#reqBody tr').count();
+      ok('triage table lists every submitted and synthetic request', listCount === 7);
+      const pickerHtml = await tPage.locator('#reqBody').innerHTML();
+      ok('table shows no raw ".json" filename text', !/\.json/i.test(pickerHtml));
+      const pickerText = await tPage.locator('#reqBody').innerText();
+      ok('table shows short name, function, requester, date', /Vendor on-time tracker/.test(pickerText) &&
         /Tax/.test(pickerText) && /Jordan Lee/.test(pickerText) && /\d{4}/.test(pickerText));
-      ok('picker shows "Not triaged" status before any save', /Not triaged/.test(pickerText));
+      ok('table shows "Not triaged" status before any save', /Not triaged/.test(pickerText));
+      ok('count text shows "N of M requests"', (await tPage.locator('#reqCount').innerText()) === '7 of 7 requests');
+      ok('unscored row shows "—" for lenses and total', (await tableRowTexts(tPage))
+        .some((r) => r[5] === '—' && r[9] === '—'));
+      ok('default sort is Submitted, newest first', await headerAriaSort(tPage, 'submitted') === 'descending');
+      {
+        const stamps = await tPage.locator('#reqBody tr').evaluateAll((rows) => rows.map((r) => r.dataset.submitted));
+        const sortedDesc = [...stamps].sort().reverse();
+        ok('rows are ordered newest submittedAt first', JSON.stringify(stamps) === JSON.stringify(sortedDesc));
+      }
+
+      // ---- status filter ----
+      await tPage.selectOption('#fStatus', 'Not triaged');
+      ok('status filter: All 7 are "Not triaged" before any save', (await tPage.locator('#reqBody tr').count()) === 7);
+      await tPage.selectOption('#fStatus', 'Big rock');
+      ok('status filter: none match "Big rock" yet', (await tPage.locator('#reqBody tr').count()) === 0);
+      ok('filtered-to-nothing message shown', (await tPage.locator('#reqCount').innerText()) === 'No requests match these filters.');
+      await tPage.selectOption('#fStatus', '');
+
+      // ---- function filter (case-insensitive dedupe: Tax and Ops only) ----
+      const fnOptions = await tPage.locator('#fFunction option').allTextContents();
+      ok('function filter lists distinct functions plus All', fnOptions.sort().join(',') === ['All', 'Ops', 'Tax'].join(','));
+      await tPage.selectOption('#fFunction', 'Tax');
+      ok('function filter: only Tax rows shown', (await tableRowTexts(tPage)).every((r) => r[1] === 'Tax'));
+      await tPage.selectOption('#fFunction', '');
+
+      // ---- search (short name, requester, function, what-goes-wrong) ----
+      await tPage.fill('#fSearch', 'vendor terms');
+      ok('search matches "What goes wrong today"', (await tPage.locator('#reqBody tr').count()) === 1 &&
+        /Vendor on-time tracker/.test(await tPage.locator('#reqBody').innerText()));
+      await tPage.fill('#fSearch', 'jordan lee');
+      ok('search matches requester, case-insensitive', (await tPage.locator('#reqBody tr').count()) === 1);
+      await tPage.fill('#fSearch', '');
+
+      // ---- combined filters ----
+      await tPage.selectOption('#fFunction', 'Ops');
+      await tPage.fill('#fSearch', 'second');
+      ok('combined function + search narrows to one row', (await tPage.locator('#reqBody tr').count()) === 1 &&
+        /Second request/.test(await tPage.locator('#reqBody').innerText()));
+      await tPage.fill('#fSearch', '');
+      await tPage.selectOption('#fFunction', '');
+
+      // ---- sort per column type ----
+      await tPage.locator('#reqTable th[data-col="short"]').click();
+      ok('sort by Request: ascending, aria-sort set', await headerAriaSort(tPage, 'short') === 'ascending');
+      {
+        const names = (await tableRowTexts(tPage)).map((r) => r[0]);
+        const sorted = [...names].sort((a, b) => a.localeCompare(b));
+        ok('sort by Request: alphabetical order', JSON.stringify(names) === JSON.stringify(sorted));
+      }
+      await tPage.locator('#reqTable th[data-col="short"]').click();
+      ok('sort toggles to descending on second click', await headerAriaSort(tPage, 'short') === 'descending');
+
+      await tPage.locator('#reqTable th[data-col="cost"]').click();
+      ok('sort by Cost: numeric, "—" sorts last (ascending)', (await tableRowTexts(tPage)).at(-1)[5] === '—');
+      await tPage.locator('#reqTable th[data-col="cost"]').click();
+      ok('sort by Cost: "—" still sorts last after toggling descending', (await tableRowTexts(tPage)).at(-1)[5] === '—');
+
+      // Enter on a header sorts too
+      await tPage.locator('#reqTable th[data-col="function"]').focus();
+      await tPage.keyboard.press('Enter');
+      ok('Enter on a header sorts it', await headerAriaSort(tPage, 'function') !== 'none');
+
+      // restore default sort for the rest of the flow: switching to a new column
+      // starts Submitted newest-first, Request/Function/etc. oldest/A-Z first
+      await tPage.locator('#reqTable th[data-col="submitted"]').click();
+      ok('switching to Submitted starts newest-first', await headerAriaSort(tPage, 'submitted') === 'descending');
+
+      // ---- row open: click ----
       await selectRecordByName(tPage, 'Vendor on-time tracker');
       await tPage.waitForFunction(() => document.getElementById('sampleDl').children.length > 0);
       const recordText = await tPage.locator('#sampleDl').innerText();
       ok('triage shows the submission\'s answers', /Vendor on-time tracker/.test(recordText) && /Tax/.test(recordText));
       ok('triage record shows all 15 rows', (await tPage.locator('#sampleDl dt').count()) === 15);
       ok('triage row: sys=Yes + wb=Read only -> "Yes, read only"', (await rowValue(tPage, 'System access')) === 'Yes, read only');
+      ok('clicked row is marked open', await tPage.locator('#reqBody tr').filter({ hasText: 'Vendor on-time tracker' }).first().getAttribute('aria-current') === 'true');
+
+      // ---- row open: Enter key ----
+      await selectRecordByName(tPage, 'Second request');
+      const rwRow = tPage.locator('#reqBody tr').filter({ hasText: 'RW case' }).first();
+      await rwRow.focus();
+      await tPage.keyboard.press('Enter');
+      await tPage.waitForFunction(() => /RW case/.test(document.getElementById('sampleDl').innerText));
+      ok('Enter on a row opens it', /RW case/.test(await tPage.locator('#sampleDl').innerText()));
 
       await selectRecordByName(tPage, 'Second request');
       ok('triage row: sys=No -> "No"', (await rowValue(tPage, 'System access')) === 'No');
@@ -398,16 +483,37 @@ async function run(){
       await tPage.click('#saveT');
       await tPage.waitForFunction(() => document.getElementById('savedMsg').textContent.includes('saved'));
       ok('save outcome shows saved', (await tPage.locator('#savedMsg').innerText()).includes('saved'));
-      ok('picker status changes to the disposition after save',
-        /Small rock/.test(await tPage.locator('#fileList').innerText()));
+      const vendorRow = tPage.locator('#reqBody tr').filter({ hasText: 'Vendor on-time tracker' }).first();
+      ok('row status updates in place after save, no reload', /Small rock/.test(await vendorRow.innerText()));
+      const vendorCells = await vendorRow.evaluate((r) => Array.from(r.children).map((td) => td.textContent));
+      ok('row Cost score updates in place after save', vendorCells[5] === '+1');
+      ok('row Total updates in place after save', vendorCells[9] === '+1');
+
+      // now that one row is scored, confirm numeric sort puts it first (desc) and dashes last
+      await tPage.locator('#reqTable th[data-col="cost"]').click();
+      await tPage.locator('#reqTable th[data-col="cost"]').click();
+      ok('sort by Cost descending: the one scored row (+1) sorts first',
+        (await tableRowTexts(tPage))[0][5] === '+1');
+      ok('sort by Cost descending: unscored rows ("—") still sort last',
+        (await tableRowTexts(tPage)).at(-1)[5] === '—');
 
       await tPage.reload();
-      await tPage.waitForSelector('#fileList button');
+      await tPage.waitForSelector('#reqBody tr');
       await selectRecordByName(tPage, 'Vendor on-time tracker');
       await tPage.waitForFunction(() => document.querySelector('input[name=disp]:checked'));
       ok('reload shows the saved disposition', await tPage.locator('input[name=disp][value="Small rock"]').isChecked());
       ok('reload shows the saved fit answers', await tPage.locator('input[name=rd][value=Yes]').isChecked());
       ok('reload shows the saved note', (await tPage.locator('#note').inputValue()) === 'Approved for next sprint.');
+
+      if (width === 375) {
+        const scrollWidth = await tPage.evaluate(() => document.documentElement.scrollWidth);
+        const clientWidth = await tPage.evaluate(() => document.documentElement.clientWidth);
+        ok('375px: page body never scrolls sideways', scrollWidth <= clientWidth);
+        const filtersDirection = await tPage.locator('.reqFilters').evaluate((el) => getComputedStyle(el).flexDirection);
+        ok('375px: filters stack (column layout)', filtersDirection === 'column');
+        const wrapOverflowX = await tPage.locator('.reqTableWrap').evaluate((el) => getComputedStyle(el).overflowX);
+        ok('375px: requests table sits in its own overflow-x:auto container', wrapOverflowX === 'auto');
+      }
       await tContext.close();
 
       // ---- preview path: empty token ----
@@ -465,6 +571,7 @@ async function run(){
       await tpPage.goto(base + '/triage.html');
       ok('triage preview shows the sample record', /Entity-level tax allocation check/.test(await tpPage.locator('#sampleDl').innerText()));
       ok('triage preview says preview only', /Preview only/.test(await tpPage.locator('#savedMsg').innerText()));
+      ok('triage preview count shows "No requests yet."', (await tpPage.locator('#reqCount').innerText()) === 'No requests yet.');
       await tpContext.close();
       await pContext.close();
     }

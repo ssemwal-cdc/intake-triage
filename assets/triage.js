@@ -15,11 +15,157 @@
     row.appendChild(n); row.appendChild(sc); lensBox.appendChild(row);
   });
 
-  var fileList = document.getElementById('fileList'), listNote = document.getElementById('listNote');
+  var listNote = document.getElementById('listNote');
+  var reqCount = document.getElementById('reqCount'), reqBody = document.getElementById('reqBody');
+  var fStatus = document.getElementById('fStatus'), fFunction = document.getElementById('fFunction'), fSearch = document.getElementById('fSearch');
   var sampleDl = document.getElementById('sampleDl'), sampleNote = document.getElementById('sampleNote');
   var terrs = document.getElementById('terrs'), savedMsg = document.getElementById('savedMsg');
   var saveT = document.getElementById('saveT');
   var currentPath = null;
+  var entries = []; // [{path, rec}], loaded once by refreshList
+  var filters = { status: '', fn: '', search: '' };
+  var sortCol = 'submitted', sortDir = 'desc';
+
+  var COLUMNS = {
+    short: { type: 'text', get: function(e){ return e.rec.shortName || ''; } },
+    'function': { type: 'text', get: function(e){ return e.rec['function'] || ''; } },
+    requester: { type: 'text', get: function(e){ return e.rec.yourName || ''; } },
+    submitted: { type: 'date', get: function(e){ return e.rec.submittedAt || ''; } },
+    status: { type: 'text', get: function(e){ return statusOf(e.rec); } },
+    cost: { type: 'num', get: function(e){ return lensVal(e.rec, 'Cost'); } },
+    risk: { type: 'num', get: function(e){ return lensVal(e.rec, 'Risk'); } },
+    time: { type: 'num', get: function(e){ return lensVal(e.rec, 'Time'); } },
+    benefit: { type: 'num', get: function(e){ return lensVal(e.rec, 'Benefit'); } },
+    total: { type: 'num', get: function(e){ return totalOf(e.rec); } }
+  };
+
+  function statusOf(rec){ return (rec.triage && rec.triage.disposition) || 'Not triaged'; }
+  function lensVal(rec, l){
+    var v = rec.triage && rec.triage.lenses ? rec.triage.lenses[l] : null;
+    return (v === null || v === undefined) ? null : v;
+  }
+  function totalOf(rec){
+    var any = false, sum = 0;
+    ['Cost','Risk','Time','Benefit'].forEach(function(l){
+      var v = lensVal(rec, l);
+      if(v !== null){ any = true; sum += v; }
+    });
+    return any ? sum : null;
+  }
+  function fmtScore(v){
+    if(v === null) return '—';
+    return v > 0 ? '+' + v : (v < 0 ? '−' + Math.abs(v) : '0');
+  }
+  function fmtDateOnly(iso){
+    if(!iso) return '';
+    var d = new Date(iso);
+    if(isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString();
+  }
+
+  function matchesFilters(e){
+    var rec = e.rec;
+    if(filters.status && statusOf(rec) !== filters.status) return false;
+    if(filters.fn && (rec['function']||'').toLowerCase() !== filters.fn.toLowerCase()) return false;
+    if(filters.search){
+      var q = filters.search.toLowerCase();
+      var hay = [rec.shortName, rec.yourName, rec['function'], rec.whatGoesWrong]
+        .map(function(v){ return (v||'').toLowerCase(); }).join(' ');
+      if(hay.indexOf(q) === -1) return false;
+    }
+    return true;
+  }
+
+  function cmpEntries(a, b){
+    var def = COLUMNS[sortCol];
+    var av = def.get(a), bv = def.get(b);
+    if(def.type === 'num'){
+      var an = av === null, bn = bv === null;
+      if(an && bn) return 0;
+      if(an) return 1;
+      if(bn) return -1;
+      return sortDir === 'asc' ? av - bv : bv - av;
+    }
+    if(def.type === 'date'){
+      if(av === bv) return 0;
+      var r = av < bv ? -1 : 1;
+      return sortDir === 'asc' ? r : -r;
+    }
+    var as = String(av).toLowerCase(), bs = String(bv).toLowerCase();
+    if(as === bs) return 0;
+    var r2 = as < bs ? -1 : 1;
+    return sortDir === 'asc' ? r2 : -r2;
+  }
+
+  function populateFunctionFilter(){
+    var seen = {}, opts = [];
+    entries.forEach(function(e){
+      var fn = (e.rec['function']||'').trim();
+      if(!fn || seen[fn.toLowerCase()]) return;
+      seen[fn.toLowerCase()] = true; opts.push(fn);
+    });
+    opts.sort(function(a,b){ return a.localeCompare(b, undefined, {sensitivity:'base'}); });
+    var current = fFunction.value;
+    fFunction.innerHTML = '<option value="">All</option>';
+    opts.forEach(function(fn){
+      var o = document.createElement('option'); o.value = fn; o.textContent = fn; fFunction.appendChild(o);
+    });
+    fFunction.value = current && seen[current.toLowerCase()] ? current : '';
+  }
+
+  function updateAriaSort(){
+    Array.prototype.forEach.call(document.querySelectorAll('#reqTable th[data-col]'), function(th){
+      th.setAttribute('aria-sort', th.dataset.col === sortCol ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none');
+    });
+  }
+
+  function renderTable(){
+    reqBody.innerHTML = '';
+    if(!entries.length){ reqCount.textContent = 'No requests yet.'; return; }
+    var filtered = entries.filter(matchesFilters);
+    filtered.sort(cmpEntries);
+    if(!filtered.length){ reqCount.textContent = 'No requests match these filters.'; return; }
+    reqCount.textContent = filtered.length + ' of ' + entries.length + ' requests';
+    filtered.forEach(function(e){
+      var tr = document.createElement('tr');
+      tr.tabIndex = 0;
+      tr.dataset.submitted = e.rec.submittedAt || '';
+      if(e.path === currentPath) tr.setAttribute('aria-current', 'true');
+      function cell(text, numeric){
+        var td = document.createElement('td');
+        if(numeric) td.className = 'num';
+        td.textContent = text;
+        tr.appendChild(td);
+      }
+      cell(e.rec.shortName || e.path);
+      cell(e.rec['function'] || 'Not given');
+      cell(e.rec.yourName || 'Not given');
+      cell(fmtDateOnly(e.rec.submittedAt));
+      cell(statusOf(e.rec));
+      cell(fmtScore(lensVal(e.rec,'Cost')), true);
+      cell(fmtScore(lensVal(e.rec,'Risk')), true);
+      cell(fmtScore(lensVal(e.rec,'Time')), true);
+      cell(fmtScore(lensVal(e.rec,'Benefit')), true);
+      cell(fmtScore(totalOf(e.rec)), true);
+      tr.onclick = function(){ selectEntry(e); };
+      tr.onkeydown = function(ev){ if(ev.key === 'Enter'){ ev.preventDefault(); selectEntry(e); } };
+      reqBody.appendChild(tr);
+    });
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('#reqTable th[data-col]'), function(th){
+    function activate(){
+      if(sortCol === th.dataset.col){ sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }
+      else { sortCol = th.dataset.col; sortDir = sortCol === 'submitted' ? 'desc' : 'asc'; }
+      updateAriaSort();
+      renderTable();
+    }
+    th.addEventListener('click', activate);
+    th.addEventListener('keydown', function(ev){ if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); activate(); } });
+  });
+  fStatus.addEventListener('change', function(){ filters.status = fStatus.value; renderTable(); });
+  fFunction.addEventListener('change', function(){ filters.fn = fFunction.value; renderTable(); });
+  fSearch.addEventListener('input', function(){ filters.search = fSearch.value.trim(); renderTable(); });
 
   var SAMPLE = {
     yourName: 'Named by requester', shortName: 'Entity-level tax allocation check', 'function': 'Tax',
@@ -111,6 +257,7 @@
 
   if(!cfg.token){
     listNote.textContent = 'Preview only. No token set: showing the sample record.';
+    reqCount.textContent = 'No requests yet.';
     loadSample();
     saveT.onclick = function(){ savedMsg.textContent = 'Outcome saved in this preview only.'; };
     return;
@@ -136,10 +283,10 @@
     return btoa(bin);
   }
 
-  // ponytail: one GET per submission to build the picker card (name, function, requester,
-  // date, status). Fine at today's volume; add a repo-side index file if submissions pass ~100.
+  // ponytail: one GET per submission to build the requests table (name, function, requester,
+  // date, status, scores). Fine at today's volume; add a repo-side index file if submissions
+  // pass ~100.
   function refreshList(){
-    fileList.innerHTML = '';
     listNote.textContent = 'Loading submissions...';
     api('submissions').then(function(res){
       if(res.status === 404) return [];
@@ -147,7 +294,7 @@
       return res.json();
     }).then(function(items){
       items = items.filter(function(i){ return i.type==='file' && /\.json$/.test(i.name); });
-      if(!items.length){ listNote.textContent = 'No submissions yet.'; return []; }
+      if(!items.length) return [];
       return Promise.all(items.map(function(it){
         return api(it.path).then(function(res){
           if(!res.ok) throw new Error('Could not open ' + it.name + ' (' + res.status + ')');
@@ -157,37 +304,26 @@
           return { path: it.path, rec: rec };
         });
       }));
-    }).then(function(entries){
-      if(!entries.length) return;
-      entries.sort(function(a,b){ return (b.rec.submittedAt||'').localeCompare(a.rec.submittedAt||''); });
-      listNote.textContent = 'Pick a submission to triage.';
-      entries.forEach(function(e){
-        var rec = e.rec;
-        var li = document.createElement('li');
-        var btn = document.createElement('button'); btn.type='button';
-        var name = document.createElement('span'); name.className='fname'; name.textContent = rec.shortName || e.path;
-        var meta = document.createElement('span'); meta.className='fmeta';
-        meta.textContent = [rec['function']||'Not given', rec.yourName||'Not given', fmtDate(rec.submittedAt)].filter(Boolean).join(' · ');
-        var tag = document.createElement('span'); tag.className='ftag';
-        tag.textContent = (rec.triage && rec.triage.disposition) || 'Not triaged';
-        btn.appendChild(name); btn.appendChild(meta); btn.appendChild(tag);
-        btn.onclick = function(){ selectFile(e.path, btn, rec); };
-        li.appendChild(btn); fileList.appendChild(li);
-      });
+    }).then(function(loaded){
+      loaded.sort(function(a,b){ return (b.rec.submittedAt||'').localeCompare(a.rec.submittedAt||''); });
+      entries = loaded;
+      listNote.textContent = '';
+      populateFunctionFilter();
+      updateAriaSort();
+      renderTable();
     }).catch(function(err){
       listNote.textContent = err.message;
     });
   }
 
-  function selectFile(path, btn, rec){
-    Array.prototype.forEach.call(fileList.querySelectorAll('button'), function(b){ b.removeAttribute('aria-current'); });
-    if(btn) btn.setAttribute('aria-current','true');
-    currentPath = path;
-    renderRecord(rec);
+  function selectEntry(e){
+    currentPath = e.path;
+    renderRecord(e.rec);
     sampleNote.textContent = '';
-    fillTriage(rec.triage);
+    fillTriage(e.rec.triage);
     savedMsg.textContent = '';
     terrs.classList.remove('show');
+    renderTable();
   }
 
   saveT.onclick = function(){
@@ -209,12 +345,14 @@
       savedAt: new Date().toISOString()
     };
     saveT.disabled = true;
+    var savedRec = null;
     api(currentPath).then(function(res){
       if(!res.ok) throw new Error('Could not reload submission (' + res.status + ')');
       return res.json();
     }).then(function(file){
       var rec = JSON.parse(b64ToUtf8(file.content));
       rec.triage = triage;
+      savedRec = rec;
       var json = JSON.stringify(rec, null, 2);
       return api(currentPath, {
         method: 'PUT',
@@ -230,8 +368,9 @@
       if(!res.ok) return res.text().then(function(t){ throw new Error('Save failed (' + res.status + ')' + (t?': '+t:'')); });
       terrs.classList.remove('show');
       savedMsg.textContent = 'Outcome saved.';
-      var curBtn = fileList.querySelector('button[aria-current="true"] .ftag');
-      if(curBtn) curBtn.textContent = triage.disposition || 'Not triaged';
+      var entry = entries.filter(function(e){ return e.path === currentPath; })[0];
+      if(entry) entry.rec = savedRec;
+      renderTable();
     }).catch(function(err){
       terrs.innerHTML = err.message; terrs.classList.add('show');
     }).then(function(){
