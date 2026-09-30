@@ -266,10 +266,17 @@ async function run(){
       await tPage.waitForSelector('#fileList button');
       const listCount = await tPage.locator('#fileList button').count();
       ok('triage lists the submitted file', listCount === 1);
+      const pickerHtml = await tPage.locator('#fileList').innerHTML();
+      ok('picker shows no raw ".json" filename text', !/\.json/i.test(pickerHtml));
+      const pickerText = await tPage.locator('#fileList').innerText();
+      ok('picker shows short name, function, requester, date', /Vendor on-time tracker/.test(pickerText) &&
+        /Tax/.test(pickerText) && /Jordan Lee/.test(pickerText) && /\d{4}/.test(pickerText));
+      ok('picker shows "Not triaged" status before any save', /Not triaged/.test(pickerText));
       await tPage.locator('#fileList button').first().click();
       await tPage.waitForFunction(() => document.getElementById('sampleDl').children.length > 0);
       const recordText = await tPage.locator('#sampleDl').innerText();
       ok('triage shows the submission\'s answers', /Vendor on-time tracker/.test(recordText) && /Tax/.test(recordText));
+      ok('triage record shows all 15 rows', (await tPage.locator('#sampleDl dt').count()) === 15);
 
       await radioLabel(tPage, 'rd', 'Yes').click();
       await radioLabel(tPage, 'de', 'Partly').click();
@@ -281,6 +288,8 @@ async function run(){
       await tPage.click('#saveT');
       await tPage.waitForFunction(() => document.getElementById('savedMsg').textContent.includes('saved'));
       ok('save outcome shows saved', (await tPage.locator('#savedMsg').innerText()).includes('saved'));
+      ok('picker status changes to the disposition after save',
+        /Small rock/.test(await tPage.locator('#fileList').innerText()));
 
       await tPage.reload();
       await tPage.waitForSelector('#fileList button');

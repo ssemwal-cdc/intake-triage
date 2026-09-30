@@ -84,17 +84,22 @@
   .preview{font-size:13.5px;color:var(--muted)}
 
   /* triage view */
-  .filelist{list-style:none;margin:0 0 20px 1.95em;padding:0;display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto}
-  .filelist button{font:inherit;font-size:14.5px;text-align:left;background:var(--white);
-       border:1px solid #AEB6BB;border-radius:4px;padding:8px 12px;cursor:pointer;width:100%}
+  .filelist{list-style:none;margin:0 0 20px 1.95em;padding:0;display:flex;flex-direction:column;gap:6px;max-height:320px;overflow:auto}
+  .filelist button{font:inherit;text-align:left;background:var(--white);
+       border:1px solid #AEB6BB;border-radius:4px;padding:10px 12px;cursor:pointer;width:100%;
+       display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px}
   .filelist button:hover{border-color:var(--onyx)}
-  .filelist button[aria-current="true"]{border-color:var(--onyx);background:var(--wash);font-weight:700}
+  .filelist button[aria-current="true"]{border-color:var(--onyx);background:var(--wash)}
+  .filelist .fname{font-weight:700;font-size:15px;flex:1 0 100%}
+  .filelist .fmeta{font-size:13.5px;color:var(--muted);flex:1 1 auto}
+  .filelist .ftag{font-size:12.5px;color:var(--slate);border:1px solid var(--line);border-radius:999px;
+       padding:2px 10px;white-space:nowrap}
   .internal{background:var(--wash);border-radius:6px;padding:14px 16px;font-size:14.5px;
             color:var(--slate);margin:0 0 28px}
   .sample{border:1px solid var(--line);border-radius:6px;padding:16px 18px;margin-bottom:8px}
   .sample dl{display:grid;grid-template-columns:170px 1fr;gap:6px 16px;margin:0;font-size:15px}
   .sample dt{color:var(--muted)}
-  .sample dd{margin:0}
+  .sample dd{margin:0;white-space:pre-wrap}
   .lens{display:grid;grid-template-columns:90px 1fr;align-items:center;gap:12px;margin-bottom:10px}
   .lens .name{font-weight:700}
   .scale{display:flex;border:1px solid #AEB6BB;border-radius:4px;overflow:hidden;width:max-content}

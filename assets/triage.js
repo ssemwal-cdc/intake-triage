@@ -22,19 +22,47 @@
   var currentPath = null;
 
   var SAMPLE = {
-    shortName: 'Entity-level tax allocation check', 'function': 'Tax', owner: 'Named by requester',
-    frequency: 'Per project', closestGap: 'We take it on trust',
-    cultureFactors: ['Built to last','Poka yoke'],
+    yourName: 'Named by requester', shortName: 'Entity-level tax allocation check', 'function': 'Tax',
+    owner: 'Named by requester',
+    whatGoesWrong: 'We re-check the entity allocation by hand every close, and it is easy to miss a step.',
+    envisionedSolution: '', cultureFactors: ['Built to last','Poka yoke'],
+    frequency: 'Per project', effort: '', users: '',
     informationLivesIn: ['NetSuite','Excel models',"in someone's head"],
-    sensitiveData: 'Yes', systemAccess: 'Read only', triage: null
+    closestGap: 'We take it on trust',
+    sensitiveData: 'Yes', systemAccess: 'Read only',
+    submittedAt: '2026-09-30T12:25:00.000Z', triage: null
   };
 
+  function fmtDate(iso){
+    if(!iso) return '';
+    var d = new Date(iso);
+    if(isNaN(d.getTime())) return iso;
+    return d.toLocaleString(undefined, { year:'numeric', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+  }
+
+  function orNotGiven(v){
+    if(Array.isArray(v)) return v.length ? v.join(', ') : 'Not given';
+    return v ? v : 'Not given';
+  }
+
   function renderRecord(rec){
-    var rows = [['Request', rec.shortName||''],['From', rec['function']||''],['Owner once built', rec.owner||''],
-      ['Frequency', rec.frequency||''],['Closest gap', rec.closestGap||''],
-      ['Culture factors', (rec.cultureFactors||[]).join(', ') || 'None selected'],
-      ['Information lives in', (rec.informationLivesIn||[]).join(', ') || 'Not given'],
-      ['Sensitive data', rec.sensitiveData || 'Not given'],['System access', rec.systemAccess || 'Not given']];
+    var rows = [
+      ['Requester', orNotGiven(rec.yourName)],
+      ['Request', orNotGiven(rec.shortName)],
+      ['From', orNotGiven(rec['function'])],
+      ['Owner once built', orNotGiven(rec.owner)],
+      ['What goes wrong today', orNotGiven(rec.whatGoesWrong)],
+      ['Envisioned solution', orNotGiven(rec.envisionedSolution)],
+      ['Culture factors', orNotGiven(rec.cultureFactors)],
+      ['Frequency', orNotGiven(rec.frequency)],
+      ['Time it takes', orNotGiven(rec.effort)],
+      ['Who uses the result', orNotGiven(rec.users)],
+      ['Information lives in', orNotGiven(rec.informationLivesIn)],
+      ['Closest gap', orNotGiven(rec.closestGap)],
+      ['Sensitive data', orNotGiven(rec.sensitiveData)],
+      ['System access', orNotGiven(rec.systemAccess)],
+      ['Submitted', fmtDate(rec.submittedAt) || 'Not given']
+    ];
     sampleDl.innerHTML = '';
     rows.forEach(function(r){ var dt=document.createElement('dt'),dd=document.createElement('dd');
       dt.textContent=r[0]; dd.textContent=r[1]; sampleDl.appendChild(dt); sampleDl.appendChild(dd); });
@@ -93,22 +121,42 @@
     return btoa(bin);
   }
 
+  // ponytail: one GET per submission to build the picker card (name, function, requester,
+  // date, status). Fine at today's volume; add a repo-side index file if submissions pass ~100.
   function refreshList(){
     fileList.innerHTML = '';
-    listNote.textContent = 'Loading...';
+    listNote.textContent = 'Loading submissions...';
     api('submissions').then(function(res){
       if(res.status === 404) return [];
       if(!res.ok) throw new Error('Could not list submissions (' + res.status + ')');
       return res.json();
     }).then(function(items){
       items = items.filter(function(i){ return i.type==='file' && /\.json$/.test(i.name); });
-      items.sort(function(a,b){ return b.name.localeCompare(a.name); });
-      if(!items.length){ listNote.textContent = 'No submissions yet.'; return; }
+      if(!items.length){ listNote.textContent = 'No submissions yet.'; return []; }
+      return Promise.all(items.map(function(it){
+        return api(it.path).then(function(res){
+          if(!res.ok) throw new Error('Could not open ' + it.name + ' (' + res.status + ')');
+          return res.json();
+        }).then(function(file){
+          var rec = JSON.parse(b64ToUtf8(file.content));
+          return { path: it.path, rec: rec };
+        });
+      }));
+    }).then(function(entries){
+      if(!entries.length) return;
+      entries.sort(function(a,b){ return (b.rec.submittedAt||'').localeCompare(a.rec.submittedAt||''); });
       listNote.textContent = 'Pick a submission to triage.';
-      items.forEach(function(it){
+      entries.forEach(function(e){
+        var rec = e.rec;
         var li = document.createElement('li');
-        var btn = document.createElement('button'); btn.type='button'; btn.textContent = it.name;
-        btn.onclick = function(){ selectFile(it.path, btn); };
+        var btn = document.createElement('button'); btn.type='button';
+        var name = document.createElement('span'); name.className='fname'; name.textContent = rec.shortName || e.path;
+        var meta = document.createElement('span'); meta.className='fmeta';
+        meta.textContent = [rec['function']||'Not given', rec.yourName||'Not given', fmtDate(rec.submittedAt)].filter(Boolean).join(' · ');
+        var tag = document.createElement('span'); tag.className='ftag';
+        tag.textContent = (rec.triage && rec.triage.disposition) || 'Not triaged';
+        btn.appendChild(name); btn.appendChild(meta); btn.appendChild(tag);
+        btn.onclick = function(){ selectFile(e.path, btn, rec); };
         li.appendChild(btn); fileList.appendChild(li);
       });
     }).catch(function(err){
@@ -116,24 +164,15 @@
     });
   }
 
-  function selectFile(path, btn){
+  function selectFile(path, btn, rec){
     Array.prototype.forEach.call(fileList.querySelectorAll('button'), function(b){ b.removeAttribute('aria-current'); });
     if(btn) btn.setAttribute('aria-current','true');
     currentPath = path;
-    sampleNote.textContent = 'Loading...';
-    api(path).then(function(res){
-      if(!res.ok) throw new Error('Could not open submission (' + res.status + ')');
-      return res.json();
-    }).then(function(file){
-      var rec = JSON.parse(b64ToUtf8(file.content));
-      renderRecord(rec);
-      sampleNote.textContent = path;
-      fillTriage(rec.triage);
-      savedMsg.textContent = '';
-      terrs.classList.remove('show');
-    }).catch(function(err){
-      sampleNote.textContent = err.message;
-    });
+    renderRecord(rec);
+    sampleNote.textContent = '';
+    fillTriage(rec.triage);
+    savedMsg.textContent = '';
+    terrs.classList.remove('show');
   }
 
   saveT.onclick = function(){
@@ -176,6 +215,8 @@
       if(!res.ok) return res.text().then(function(t){ throw new Error('Save failed (' + res.status + ')' + (t?': '+t:'')); });
       terrs.classList.remove('show');
       savedMsg.textContent = 'Outcome saved.';
+      var curBtn = fileList.querySelector('button[aria-current="true"] .ftag');
+      if(curBtn) curBtn.textContent = triage.disposition || 'Not triaged';
     }).catch(function(err){
       terrs.innerHTML = err.message; terrs.classList.add('show');
     }).then(function(){
