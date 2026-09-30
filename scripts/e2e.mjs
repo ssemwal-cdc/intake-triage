@@ -58,6 +58,20 @@ function makeFakeRepo(){
 }
 
 function utf8FromB64(b64){ return Buffer.from(b64, 'base64').toString('utf8'); }
+function b64FromUtf8(s){ return Buffer.from(s, 'utf8').toString('base64'); }
+function injectRecord(repo, path, rec){
+  repo.files.set(path, { sha: repo.nextSha(), b64: b64FromUtf8(JSON.stringify(rec, null, 2)) });
+}
+async function rowValue(page, label){
+  return page.evaluate((l) => {
+    const dts = Array.from(document.querySelectorAll('#sampleDl dt'));
+    const dt = dts.find((d) => d.textContent === l);
+    return dt ? dt.nextElementSibling.textContent : null;
+  }, label);
+}
+async function selectRecordByName(page, name){
+  await page.locator('#fileList button').filter({ hasText: name }).first().click();
+}
 
 async function routeGithub(page, repo, { failNextPut = false } = {}){
   await page.route('https://api.github.com/**', async (route) => {
@@ -130,6 +144,8 @@ async function run(){
       // owner copy edit (2026-09-30 ruling)
       ok('missHelp shows the owner-approved copy',
         (await page.locator('#missHelp').innerText()) === 'Tell us the problem as you see it. A rough cost helps, if you know it.');
+      ok('notes text matches exactly',
+        (await page.locator('.notes p').innerText()) === 'Please describe sensitive data rather than pasting verbatim.');
 
       // required errors (7): name, fn, short, steward, freq, miss, gap — before anything is filled
       await page.click('button[type=submit]');
@@ -196,6 +212,19 @@ async function run(){
       await page.locator('#srcs input[value="On paper 🤨"]').check();
       await page.locator('#srcs input[value="NetSuite"]').check();
       await radioLabel(page, 'sens', 'No').click();
+
+      // sys/wb follow-up show/hide/clear (same pattern as the Other fill-in)
+      const wbFollowup = page.locator('#wbFollowup');
+      ok('system follow-up hidden by default', !(await wbFollowup.isVisible()));
+      await radioLabel(page, 'sys', 'No').click();
+      ok('system follow-up stays hidden on No', !(await wbFollowup.isVisible()));
+      await radioLabel(page, 'sys', 'Yes').click();
+      ok('system follow-up shown on Yes', await wbFollowup.isVisible());
+      await radioLabel(page, 'wb', 'Read and write').click();
+      await radioLabel(page, 'sys', 'No').click();
+      ok('system follow-up hidden after switching back to No', !(await wbFollowup.isVisible()));
+      ok('system follow-up cleared on No', (await page.locator('input[name=wb]:checked').count()) === 0);
+      await radioLabel(page, 'sys', 'Yes').click();
       await radioLabel(page, 'wb', 'Read only').click();
 
       // submit; button disables while in flight; capture the PUT body
@@ -227,6 +256,7 @@ async function run(){
         decoded.informationLivesIn.includes('NetSuite') &&
         decoded.closestGap === 'We take it on trust' &&
         decoded.sensitiveData === 'No' &&
+        decoded.systemConnection === 'Yes' &&
         decoded.systemAccess === 'Read only' &&
         decoded.formTitle === 'Request Intake' &&
         decoded.schemaVersion === 1 &&
@@ -237,6 +267,7 @@ async function run(){
       // start another request resets the form
       await page.click('#another');
       ok('start another request resets the form', (await page.locator('#name').inputValue()) === '' && await page.locator('#f').isVisible());
+      ok('start another request resets the system follow-up', !(await wbFollowup.isVisible()));
 
       // failed submit keeps answers, shows error, no confirmation
       await page.fill('#name', 'Ada Lovelace');
@@ -246,6 +277,7 @@ async function run(){
       await page.fill('#miss', 'Something else goes wrong.');
       await page.fill('#freq', 'Weekly');
       await radioLabel(page, 'gap', 'Guess').click();
+      await radioLabel(page, 'sys', 'No').click();
       await routeGithub(page, repo, { failNextPut: true });
       await page.click('button[type=submit]');
       await page.waitForSelector('#errs.show');
@@ -253,6 +285,63 @@ async function run(){
       ok('failed submit keeps the form answers', (await page.locator('#name').inputValue()) === 'Ada Lovelace');
       ok('failed submit does not show confirmation', !(await page.locator('#done.show').isVisible()));
       await routeGithub(page, repo); // restore normal behaviour
+
+      // resubmit (sys=No case): payload carries systemConnection, empty systemAccess
+      const putPromise2 = page.waitForRequest((r) => r.method() === 'PUT' && /\/contents\/submissions\//.test(r.url()));
+      await page.click('button[type=submit]');
+      const putReq2 = await putPromise2;
+      const decoded2 = JSON.parse(utf8FromB64(JSON.parse(putReq2.postData()).content));
+      ok('sys=No payload: systemConnection No, systemAccess empty',
+        decoded2.systemConnection === 'No' && decoded2.systemAccess === '');
+      await page.waitForSelector('#done.show', { timeout: 5000 });
+
+      // third submission (sys=Unsure case)
+      await page.click('#another');
+      await page.fill('#name', 'Sam Rivera');
+      await page.fill('#fn', 'Ops');
+      await page.fill('#short', 'Third request');
+      await page.fill('#steward', 'Sam Rivera');
+      await page.fill('#miss', 'A third problem statement.');
+      await page.fill('#freq', 'Weekly');
+      await radioLabel(page, 'gap', 'See').click();
+      await radioLabel(page, 'sys', 'Unsure').click();
+      const putPromise3 = page.waitForRequest((r) => r.method() === 'PUT' && /\/contents\/submissions\//.test(r.url()));
+      await page.click('button[type=submit]');
+      const putReq3 = await putPromise3;
+      const decoded3 = JSON.parse(utf8FromB64(JSON.parse(putReq3.postData()).content));
+      ok('sys=Unsure payload: systemConnection Unsure, systemAccess empty',
+        decoded3.systemConnection === 'Unsure' && decoded3.systemAccess === '');
+      await page.waitForSelector('#done.show', { timeout: 5000 });
+
+      // synthetic records to cover the remaining triage-row cases without driving the form
+      injectRecord(repo, 'submissions/synthetic-rw.json', {
+        yourName: 'Synthetic', shortName: 'RW case', 'function': 'Ops', owner: 'Synthetic',
+        whatGoesWrong: 'x', envisionedSolution: '', cultureFactors: [], frequency: 'Once',
+        effort: '', users: '', informationLivesIn: [], closestGap: 'We take it on trust',
+        sensitiveData: 'No', systemConnection: 'Yes', systemAccess: 'Read and write',
+        submittedAt: '2026-09-30T00:00:00.000Z', formTitle: 'Request Intake', schemaVersion: 1, triage: null
+      });
+      injectRecord(repo, 'submissions/synthetic-unsure-access.json', {
+        yourName: 'Synthetic', shortName: 'Unsure access case', 'function': 'Ops', owner: 'Synthetic',
+        whatGoesWrong: 'x', envisionedSolution: '', cultureFactors: [], frequency: 'Once',
+        effort: '', users: '', informationLivesIn: [], closestGap: 'We take it on trust',
+        sensitiveData: 'No', systemConnection: 'Yes', systemAccess: 'Unsure',
+        submittedAt: '2026-09-30T00:00:00.000Z', formTitle: 'Request Intake', schemaVersion: 1, triage: null
+      });
+      injectRecord(repo, 'submissions/synthetic-old-shape.json', {
+        yourName: 'Synthetic', shortName: 'Old shape case', 'function': 'Ops', owner: 'Synthetic',
+        whatGoesWrong: 'x', envisionedSolution: '', cultureFactors: [], frequency: 'Once',
+        effort: '', users: '', informationLivesIn: [], closestGap: 'We take it on trust',
+        sensitiveData: 'No', systemAccess: 'Read only',
+        submittedAt: '2026-09-30T00:00:00.000Z', formTitle: 'Request Intake', schemaVersion: 1, triage: null
+      });
+      injectRecord(repo, 'submissions/synthetic-not-given.json', {
+        yourName: 'Synthetic', shortName: 'Not given case', 'function': 'Ops', owner: 'Synthetic',
+        whatGoesWrong: 'x', envisionedSolution: '', cultureFactors: [], frequency: 'Once',
+        effort: '', users: '', informationLivesIn: [], closestGap: 'We take it on trust',
+        sensitiveData: 'No', systemConnection: '', systemAccess: '',
+        submittedAt: '2026-09-30T00:00:00.000Z', formTitle: 'Request Intake', schemaVersion: 1, triage: null
+      });
 
       await context.close();
 
@@ -265,18 +354,39 @@ async function run(){
       await tPage.goto(base + '/triage.html');
       await tPage.waitForSelector('#fileList button');
       const listCount = await tPage.locator('#fileList button').count();
-      ok('triage lists the submitted file', listCount === 1);
+      ok('triage lists every submitted and synthetic file', listCount === 7);
       const pickerHtml = await tPage.locator('#fileList').innerHTML();
       ok('picker shows no raw ".json" filename text', !/\.json/i.test(pickerHtml));
       const pickerText = await tPage.locator('#fileList').innerText();
       ok('picker shows short name, function, requester, date', /Vendor on-time tracker/.test(pickerText) &&
         /Tax/.test(pickerText) && /Jordan Lee/.test(pickerText) && /\d{4}/.test(pickerText));
       ok('picker shows "Not triaged" status before any save', /Not triaged/.test(pickerText));
-      await tPage.locator('#fileList button').first().click();
+      await selectRecordByName(tPage, 'Vendor on-time tracker');
       await tPage.waitForFunction(() => document.getElementById('sampleDl').children.length > 0);
       const recordText = await tPage.locator('#sampleDl').innerText();
       ok('triage shows the submission\'s answers', /Vendor on-time tracker/.test(recordText) && /Tax/.test(recordText));
       ok('triage record shows all 15 rows', (await tPage.locator('#sampleDl dt').count()) === 15);
+      ok('triage row: sys=Yes + wb=Read only -> "Yes, read only"', (await rowValue(tPage, 'System access')) === 'Yes, read only');
+
+      await selectRecordByName(tPage, 'Second request');
+      ok('triage row: sys=No -> "No"', (await rowValue(tPage, 'System access')) === 'No');
+
+      await selectRecordByName(tPage, 'Third request');
+      ok('triage row: sys=Unsure -> "Unsure"', (await rowValue(tPage, 'System access')) === 'Unsure');
+
+      await selectRecordByName(tPage, 'RW case');
+      ok('triage row: sys=Yes + wb=Read and write -> "Yes, read and write"', (await rowValue(tPage, 'System access')) === 'Yes, read and write');
+
+      await selectRecordByName(tPage, 'Unsure access case');
+      ok('triage row: sys=Yes + wb=Unsure -> "Yes, unsure"', (await rowValue(tPage, 'System access')) === 'Yes, unsure');
+
+      await selectRecordByName(tPage, 'Old shape case');
+      ok('triage row: old shape shows systemAccess as-is', (await rowValue(tPage, 'System access')) === 'Read only');
+
+      await selectRecordByName(tPage, 'Not given case');
+      ok('triage row: empty systemConnection -> "Not given"', (await rowValue(tPage, 'System access')) === 'Not given');
+
+      await selectRecordByName(tPage, 'Vendor on-time tracker');
 
       await radioLabel(tPage, 'rd', 'Yes').click();
       await radioLabel(tPage, 'de', 'Partly').click();
@@ -293,7 +403,7 @@ async function run(){
 
       await tPage.reload();
       await tPage.waitForSelector('#fileList button');
-      await tPage.locator('#fileList button').first().click();
+      await selectRecordByName(tPage, 'Vendor on-time tracker');
       await tPage.waitForFunction(() => document.querySelector('input[name=disp]:checked'));
       ok('reload shows the saved disposition', await tPage.locator('input[name=disp][value="Small rock"]').isChecked());
       ok('reload shows the saved fit answers', await tPage.locator('input[name=rd][value=Yes]').isChecked());

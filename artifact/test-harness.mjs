@@ -177,6 +177,16 @@ function fakeClaudeScript(store, viewer){
 function radioLabel(page, name, value){
   return page.locator(`label:has(input[name="${name}"][value="${value}"])`);
 }
+async function rowValue(page, label){
+  return page.evaluate((l) => {
+    const dts = Array.from(document.querySelectorAll('#sampleDl dt'));
+    const dt = dts.find((d) => d.textContent === l);
+    return dt ? dt.nextElementSibling.textContent : null;
+  }, label);
+}
+async function selectRecordByName(page, name){
+  await page.locator('#fileList button').filter({ hasText: name }).first().click();
+}
 
 async function run(){
   const http = await import('node:http');
@@ -199,6 +209,9 @@ async function run(){
         await page.addInitScript(fakeClaudeScript(store, { id: 'u_alice', level: 'interact', signedOut: false }));
         await page.goto(base);
 
+        ok('notes text matches exactly',
+          (await page.locator('.notes p').innerText()) === 'Please describe sensitive data rather than pasting verbatim.');
+
         // required errors (7): name, fn, short, steward, freq, miss, gap
         await page.click('button[type=submit]');
         ok('7 required errors shown when form is empty', (await page.locator('#errs li').count()) === 7);
@@ -218,6 +231,19 @@ async function run(){
         await page.locator('#srcs input[value="NetSuite"]').check();
         await radioLabel(page, 'gap', 'Verify').click();
         await radioLabel(page, 'sens', 'No').click();
+
+        // sys/wb follow-up show/hide/clear (same pattern as the Other fill-in)
+        const wbFollowup = page.locator('#wbFollowup');
+        ok('system follow-up hidden by default', !(await wbFollowup.isVisible()));
+        await radioLabel(page, 'sys', 'No').click();
+        ok('system follow-up stays hidden on No', !(await wbFollowup.isVisible()));
+        await radioLabel(page, 'sys', 'Yes').click();
+        ok('system follow-up shown on Yes', await wbFollowup.isVisible());
+        await radioLabel(page, 'wb', 'Read and write').click();
+        await radioLabel(page, 'sys', 'No').click();
+        ok('system follow-up hidden after switching back to No', !(await wbFollowup.isVisible()));
+        ok('system follow-up cleared on No', (await page.locator('input[name=wb]:checked').count()) === 0);
+        await radioLabel(page, 'sys', 'Yes').click();
         await radioLabel(page, 'wb', 'Read only').click();
         await page.click('button[type=submit]');
         await page.waitForSelector('#done.show', { timeout: 5000 });
@@ -232,12 +258,50 @@ async function run(){
           item.shortName === 'Vendor on-time tracker' && item.owner === 'Jordan Lee' &&
           item.whatGoesWrong === 'We re-check vendor terms by hand every month.' &&
           item.frequency === 'Monthly' && item.closestGap === 'We take it on trust' &&
-          item.sensitiveData === 'No' && item.systemAccess === 'Read only' &&
+          item.sensitiveData === 'No' && item.systemConnection === 'Yes' && item.systemAccess === 'Read only' &&
           item.formTitle === 'Request Intake' && item.schemaVersion === 1 &&
           item.triage === undefined && typeof item.submittedAt === 'string' && typeof item.id === 'string');
 
         ok('requester DOM has no triage section', (await page.locator('#triage').count()) === 0);
         ok('requester DOM has no view switcher visible', !(await page.locator('#viewswitch').isVisible()));
+
+        // start another request resets the system follow-up
+        await page.click('#another');
+        ok('start another request resets the system follow-up', !(await wbFollowup.isVisible()));
+
+        // second submission (sys=No case)
+        await page.fill('#name', 'Ada Lovelace');
+        await page.fill('#fn', 'Ops');
+        await page.fill('#short', 'Second request');
+        await page.fill('#steward', 'Ada Lovelace');
+        await page.fill('#miss', 'Something else goes wrong.');
+        await page.fill('#freq', 'Weekly');
+        await radioLabel(page, 'gap', 'Guess').click();
+        await radioLabel(page, 'sys', 'No').click();
+        await page.click('button[type=submit]');
+        await page.waitForSelector('#done.show', { timeout: 5000 });
+        const docs2 = await page.evaluate(() => window.__store._docs);
+        const item2 = docs2['requests/u_alice'].items[1];
+        ok('sys=No payload: systemConnection No, systemAccess empty',
+          item2.systemConnection === 'No' && item2.systemAccess === '');
+
+        // third submission (sys=Unsure case)
+        await page.click('#another');
+        await page.fill('#name', 'Sam Rivera');
+        await page.fill('#fn', 'Ops');
+        await page.fill('#short', 'Third request');
+        await page.fill('#steward', 'Sam Rivera');
+        await page.fill('#miss', 'A third problem statement.');
+        await page.fill('#freq', 'Weekly');
+        await radioLabel(page, 'gap', 'See').click();
+        await radioLabel(page, 'sys', 'Unsure').click();
+        await page.click('button[type=submit]');
+        await page.waitForSelector('#done.show', { timeout: 5000 });
+        const docs3 = await page.evaluate(() => window.__store._docs);
+        const item3 = docs3['requests/u_alice'].items[2];
+        ok('sys=Unsure payload: systemConnection Unsure, systemAccess empty',
+          item3.systemConnection === 'Unsure' && item3.systemAccess === '');
+
         await context.close();
       }
 
@@ -263,6 +327,15 @@ async function run(){
 
       section(`Viewport ${width}px — editor: picker, record, save, isolation`);
       {
+        function syntheticItem(id, shortName, systemConnection, systemAccess){
+          return {
+            id: id, yourName: 'Synthetic', function: 'Ops', shortName: shortName, owner: 'Synthetic',
+            whatGoesWrong: 'x', envisionedSolution: '', cultureFactors: [], frequency: 'Once',
+            effort: '', users: '', informationLivesIn: [], closestGap: 'We take it on trust',
+            sensitiveData: 'No', systemConnection: systemConnection, systemAccess: systemAccess,
+            submittedAt: '2026-09-30T00:00:00.000Z', formTitle: 'Request Intake', schemaVersion: 1
+          };
+        }
         const store = {
           _docs: {
             'requests/u_alice': { items: [{
@@ -270,8 +343,21 @@ async function run(){
               owner: 'Jordan Lee', whatGoesWrong: 'We re-check vendor terms by hand every month.',
               envisionedSolution: '', cultureFactors: ['Poka yoke'], frequency: 'Monthly', effort: '',
               users: '', informationLivesIn: ['NetSuite'], closestGap: 'We take it on trust',
-              sensitiveData: 'No', systemAccess: 'Read only', submittedAt: '2026-09-30T12:00:00.000Z',
+              sensitiveData: 'No', systemConnection: 'Yes', systemAccess: 'Read only', submittedAt: '2026-09-30T12:00:00.000Z',
               formTitle: 'Request Intake', schemaVersion: 1
+            },
+            syntheticItem('itm2', 'No case', 'No', ''),
+            syntheticItem('itm3', 'Unsure case', 'Unsure', ''),
+            syntheticItem('itm4', 'RW case', 'Yes', 'Read and write'),
+            syntheticItem('itm5', 'Unsure access case', 'Yes', 'Unsure'),
+            syntheticItem('itm6', 'Not given case', '', '')
+            ] },
+            'requests/u_old': { items: [{
+              id: 'itmOld', yourName: 'Synthetic', function: 'Ops', shortName: 'Old shape case', owner: 'Synthetic',
+              whatGoesWrong: 'x', envisionedSolution: '', cultureFactors: [], frequency: 'Once',
+              effort: '', users: '', informationLivesIn: [], closestGap: 'We take it on trust',
+              sensitiveData: 'No', systemAccess: 'Read only',
+              submittedAt: '2026-09-30T00:00:00.000Z', formTitle: 'Request Intake', schemaVersion: 1
             }] }
           }
         };
@@ -282,14 +368,35 @@ async function run(){
 
         ok('editor sees the view switcher', await editorPage.locator('#viewswitch').isVisible());
         await editorPage.click('#swTri');
-        ok('editor sees the picker', (await editorPage.locator('#fileList button').count()) === 1);
+        ok('editor sees the picker', (await editorPage.locator('#fileList button').count()) === 7);
         const pickerText = await editorPage.locator('#fileList').innerText();
         ok('picker shows short name, function, requester, status', /Vendor on-time tracker/.test(pickerText) &&
           /Tax/.test(pickerText) && /Jordan Lee/.test(pickerText) && /Not triaged/.test(pickerText));
 
-        await editorPage.locator('#fileList button').first().click();
+        await selectRecordByName(editorPage, 'Vendor on-time tracker');
         await editorPage.waitForFunction(() => document.getElementById('sampleDl').children.length > 0);
         ok('triage record shows all 15 rows', (await editorPage.locator('#sampleDl dt').count()) === 15);
+        ok('triage row: sys=Yes + wb=Read only -> "Yes, read only"', (await rowValue(editorPage, 'System access')) === 'Yes, read only');
+
+        await selectRecordByName(editorPage, 'No case');
+        ok('triage row: sys=No -> "No"', (await rowValue(editorPage, 'System access')) === 'No');
+
+        await selectRecordByName(editorPage, 'Unsure case');
+        ok('triage row: sys=Unsure -> "Unsure"', (await rowValue(editorPage, 'System access')) === 'Unsure');
+
+        await selectRecordByName(editorPage, 'RW case');
+        ok('triage row: sys=Yes + wb=Read and write -> "Yes, read and write"', (await rowValue(editorPage, 'System access')) === 'Yes, read and write');
+
+        await selectRecordByName(editorPage, 'Unsure access case');
+        ok('triage row: sys=Yes + wb=Unsure -> "Yes, unsure"', (await rowValue(editorPage, 'System access')) === 'Yes, unsure');
+
+        await selectRecordByName(editorPage, 'Not given case');
+        ok('triage row: empty systemConnection -> "Not given"', (await rowValue(editorPage, 'System access')) === 'Not given');
+
+        await selectRecordByName(editorPage, 'Old shape case');
+        ok('triage row: old shape shows systemAccess as-is', (await rowValue(editorPage, 'System access')) === 'Read only');
+
+        await selectRecordByName(editorPage, 'Vendor on-time tracker');
 
         await radioLabel(editorPage, 'rd', 'Yes').click();
         await radioLabel(editorPage, 'de', 'Partly').click();

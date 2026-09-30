@@ -70,6 +70,7 @@ answer is `""` or `[]`. `triage` starts `null`. It fills in later, in place, fro
   "informationLivesIn": ["NetSuite", "Excel models"],
   "closestGap": "We take it on trust",
   "sensitiveData": "No",
+  "systemConnection": "Yes",
   "systemAccess": "Read only",
   "submittedAt": "2026-09-30T14:05:00.000Z",
   "formTitle": "Request Intake",

@@ -19,7 +19,7 @@
     <h1 id="formTitle">Request Intake</h1>
     <p class="lede">Share a need for review. Every request gets a reply.</p>
     <div class="notes">
-      <p>Please describe sensitive data rather than pasting.</p>
+      <p>Please describe sensitive data rather than pasting verbatim.</p>
     </div>
 
     <form id="f" novalidate>
@@ -125,11 +125,16 @@
             <label><input type="radio" name="sens" value="No">No</label>
             <label><input type="radio" name="sens" value="Not sure">Not sure</label>
           </div></div>
-        <div class="field"><span class="q" id="wbL">Would it only read from a web-based system like NetSuite?</span>
+        <div class="field"><span class="q" id="sysL">Would it connect to a system like NetSuite, SharePoint or Teams?</span><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
+          <div class="radios" role="radiogroup" aria-labelledby="sysL">
+            <label><input type="radio" name="sys" value="Yes">Yes</label>
+            <label><input type="radio" name="sys" value="No">No</label>
+            <label><input type="radio" name="sys" value="Unsure">Unsure</label>
+          </div></div>
+        <div class="field followup" id="wbFollowup" hidden><span class="q" id="wbL">Would it only read from it, or also write back?</span><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
           <div class="radios" role="radiogroup" aria-labelledby="wbL">
             <label><input type="radio" name="wb" value="Read only">Read only</label>
             <label><input type="radio" name="wb" value="Read and write">Read and write</label>
-            <label><input type="radio" name="wb" value="Neither">Neither</label>
             <label><input type="radio" name="wb" value="Unsure">Unsure</label>
           </div></div>
         <div class="field"><span class="help">Supporting files are welcome but not required. The reply will say where to send them.</span></div>

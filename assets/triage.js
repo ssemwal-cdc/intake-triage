@@ -29,7 +29,7 @@
     frequency: 'Per project', effort: '', users: '',
     informationLivesIn: ['NetSuite','Excel models',"in someone's head"],
     closestGap: 'We take it on trust',
-    sensitiveData: 'Yes', systemAccess: 'Read only',
+    sensitiveData: 'Yes', systemConnection: 'Yes', systemAccess: 'Read only',
     submittedAt: '2026-09-30T12:25:00.000Z', triage: null
   };
 
@@ -43,6 +43,21 @@
   function orNotGiven(v){
     if(Array.isArray(v)) return v.length ? v.join(', ') : 'Not given';
     return v ? v : 'Not given';
+  }
+
+  // "System access" row text. New records carry systemConnection (Yes/No/Unsure) plus
+  // systemAccess as the Yes follow-up (Read only/Read and write/Unsure). Old records carry
+  // only systemAccess (Read only/Read and write/Neither/Unsure) and show that value as-is.
+  function systemAccessText(rec){
+    if(rec.systemConnection === undefined) return orNotGiven(rec.systemAccess);
+    var sc = rec.systemConnection;
+    if(!sc) return 'Not given';
+    if(sc === 'No' || sc === 'Unsure') return sc;
+    if(sc === 'Yes'){
+      var map = {'Read only':'Yes, read only','Read and write':'Yes, read and write','Unsure':'Yes, unsure'};
+      return map[rec.systemAccess] || 'Not given';
+    }
+    return sc;
   }
 
   function renderRecord(rec){
@@ -60,7 +75,7 @@
       ['Information lives in', orNotGiven(rec.informationLivesIn)],
       ['Closest gap', orNotGiven(rec.closestGap)],
       ['Sensitive data', orNotGiven(rec.sensitiveData)],
-      ['System access', orNotGiven(rec.systemAccess)],
+      ['System access', systemAccessText(rec)],
       ['Submitted', fmtDate(rec.submittedAt) || 'Not given']
     ];
     sampleDl.innerHTML = '';
