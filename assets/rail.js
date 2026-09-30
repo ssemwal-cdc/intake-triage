@@ -68,6 +68,15 @@
   var dotsList = document.createElement('div');
   dotsList.className = 'rail-dots';
 
+  // Vertical timeline (>=641px only; CSS hides it on the mobile top bar). Sits
+  // behind the numbered step dots, so it's built before the step buttons below.
+  var trackV = document.createElement('div');
+  trackV.className = 'rail-track-v';
+  var fillV = document.createElement('div');
+  fillV.className = 'rail-fill-v';
+  stepsList.appendChild(trackV);
+  stepsList.appendChild(fillV);
+
   var entries = []; // { step, h2, btn, dot }
 
   steps.forEach(function(step, i){
@@ -114,17 +123,27 @@
   var railStatus = document.getElementById('railStatus');
   var railTrack = rail.querySelector('.rail-track');
 
+  var lastPercent = 0;
+  function paintFillV(){
+    // top-down fill: height is a px slice of the track's own rendered length,
+    // so it lines up with the step dots regardless of label wrapping.
+    var trackLen = trackV.offsetHeight;
+    fillV.style.height = trackLen ? Math.round(trackLen * (lastPercent / 100)) + 'px' : '0px';
+  }
+
   function recompute(){
     var filled = 0;
     REQUIRED_IDS.forEach(function(id){ if(fieldFilled(id)) filled++; });
     if(gapSection && gapPicked()) filled++;
     var remaining = TOTAL_REQUIRED - filled;
     var percent = TOTAL_REQUIRED ? Math.round((filled / TOTAL_REQUIRED) * 100) : 100;
+    lastPercent = percent;
 
     railFill.style.width = percent + '%';
     railPercent.textContent = percent + '%';
     railStatus.textContent = remaining > 0 ? (remaining + ' required left') : 'Ready to submit';
     railTrack.setAttribute('aria-valuenow', String(percent));
+    paintFillV();
 
     entries.forEach(function(entry){
       var reqIds = reqBySection.get(entry.step) || [];
@@ -180,6 +199,11 @@
       setTimeout(recompute, 0);
     });
   }
+
+  // Track length changes with viewport width and label wrapping; repaint the
+  // vertical fill to match without recomputing the whole form's state.
+  window.addEventListener('resize', paintFillV);
+  if(window.ResizeObserver) new ResizeObserver(paintFillV).observe(trackV);
 
   recompute();
 })();

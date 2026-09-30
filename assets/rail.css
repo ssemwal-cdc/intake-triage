@@ -50,6 +50,19 @@
     box-shadow:0 8px 24px rgba(20,30,39,.25);
   }
   #progressRail .rail-dots{display:none}
+
+  /* horizontal fill is mobile-only here; a vertical timeline replaces it behind the
+     numbered step dots, so the percent/status readout is all that's left up top */
+  #progressRail .rail-progress .rail-track{display:none}
+
+  #progressRail .rail-steps{position:relative}
+  #progressRail .rail-track-v,
+  #progressRail .rail-fill-v{
+    position:absolute;left:24px;top:20px;bottom:20px;width:3px;border-radius:999px;
+  }
+  #progressRail .rail-track-v{background:rgba(255,255,255,.18)}
+  #progressRail .rail-fill-v{bottom:auto;height:0;background:var(--rail-orange);transition:height .25s ease}
+  #progressRail .rail-step{position:relative}
 }
 
 /* ---- <=640px: slim sticky top bar with dots ---- */
@@ -77,5 +90,6 @@
 }
 
 @media (prefers-reduced-motion:reduce){
-  #progressRail .rail-fill{transition:none}
+  #progressRail .rail-fill,
+  #progressRail .rail-fill-v{transition:none}
 }

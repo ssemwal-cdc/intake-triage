@@ -600,6 +600,10 @@ async function run(){
       ok('no horizontal scroll', await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
       if (width <= 640) {
         ok('slim top bar shows at this width', await page.locator('#progressRail').evaluate((el) => getComputedStyle(el).position === 'sticky' && el.getBoundingClientRect().top === 0));
+        ok('horizontal fill bar is used on the mobile top bar', await page.locator('#progressRail .rail-track').isVisible());
+      } else {
+        ok('horizontal fill bar is hidden in favor of the vertical timeline', !(await page.locator('#progressRail .rail-track').isVisible()));
+        ok('vertical timeline track sits behind the step dots', await page.locator('#progressRail .rail-track-v').isVisible());
       }
 
       // clicking step 4 scrolls section 4 into view and moves focus to its heading
@@ -625,6 +629,14 @@ async function run(){
       await radioLabel(page, 'gap', 'See').click();
       ok('percent reaches 100% once all 7 required answers are given', (await percentText()) === '100%');
       ok('"Ready to submit" shown at 100%', (await page.locator('#railStatus').innerText()) === 'Ready to submit');
+      if (width > 640) {
+        await page.waitForTimeout(300); // let the fill's height transition settle
+        const [trackLen, fillLen] = await page.evaluate(() => [
+          document.querySelector('#progressRail .rail-track-v').offsetHeight,
+          document.querySelector('#progressRail .rail-fill-v').offsetHeight
+        ]);
+        ok('vertical fill runs the full track height at 100%', trackLen > 0 && Math.abs(fillLen - trackLen) <= 1);
+      }
 
       // scroll-spy marks aria-current on the section in view (checked on the visible
       // representation only: the rail keeps a mirrored, display:none dot/step list in
