@@ -19,5 +19,5 @@ Governed by the threat-model ruling (no malicious users; submissions not readily
 - Public Pages repo serves `index.html`. On submit it writes one JSON file to a separate private repo (e.g. `intake-submissions`) through the GitHub contents API.
 - Token: fine-grained, that one private repo only, contents read and write. Embedded in page code.
 - `triage.html` on its own unlisted link reads the private repo and writes the outcome back.
-- Risk: GitHub secret scanning revokes tokens found in public repos, or push protection refuses the commit. Storing the token split so the scanner misses it is an owner call.
-- Open: which GitHub org or account owns both repos; whose account the token belongs to.
+- Token delivery, ruled 2026-09-30: the token is an Actions secret (`INTAKE_TOKEN`). The Pages deploy writes it into the published `assets/config.js`. The repo never holds it, so push protection never blocks it and GitHub never revokes it. No disguising.
+- Both repos live under the owner's account `ssemwal-cdc`; the token is the owner's.
