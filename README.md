@@ -10,7 +10,6 @@ No framework, no build step, no dependencies.
 - `assets/app.js` — page behaviour (view toggle, validation, triage-record fill-in).
 - `assets/compass-logo.png` — header logo.
 - `docs/source/request-intake-mockup.html` — the original single-file mockup, kept for reference.
-- `scripts/check_port.py` — diffs the mockup against `index.html`/`assets/*` to confirm the port stayed faithful.
 
 ## Preview locally
 
