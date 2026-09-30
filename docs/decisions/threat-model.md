@@ -2,6 +2,6 @@
 
 Status: ruled 2026-09-30 by the owner.
 
-- Assume no malicious users. A token visible in page source is acceptable.
+- Assume no malicious users. Do not over-engineer security.
 - The one privacy goal: requesters must not readily see other people's submissions.
-- Consequence: submissions never land where requesters browse (not in the public site repo, not on the public page).
+- Under route B (see hosting) claude.ai sign-in and the artifact's access rules enforce this. No token ships in any page.
