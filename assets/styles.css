@@ -13,7 +13,7 @@
   header.top img{height:60px;width:auto;display:block}
   .viewswitch{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
   .viewswitch button{font:inherit;font-size:14px;padding:8px 14px;border:0;background:var(--white);
-       color:var(--slate);cursor:pointer}
+       color:var(--slate);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:1}
   .viewswitch button[aria-pressed="true"]{background:var(--onyx);color:var(--white)}
   h1{font-size:34px;line-height:1.15;margin:28px 0 10px;font-weight:700;letter-spacing:-.01em}
   .lede{font-size:17px;color:var(--slate);margin:0 0 20px;max-width:62ch}
@@ -32,15 +32,15 @@
        padding:10px 12px;border:1px solid #AEB6BB;border-radius:4px;background:var(--white)}
   textarea{min-height:96px;resize:vertical}
   input:focus,select:focus,textarea:focus,button:focus-visible,.tile:focus-within,
-  .check:focus-within{outline:3px solid rgba(243,120,32,.45);outline-offset:1px;border-color:var(--orange)}
+  .check:focus-within,.radios label:focus-within{outline:3px solid rgba(243,120,32,.45);outline-offset:1px;border-color:var(--orange)}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   .checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}
   .check{display:flex;gap:10px;align-items:flex-start;font-size:15px;padding:4px 0}
   .check input{margin-top:4px;accent-color:var(--orange)}
   .radios{display:flex;flex-wrap:wrap;gap:8px}
-  .radios label{display:flex;align-items:center;gap:8px;border:1px solid #AEB6BB;border-radius:4px;
-       padding:8px 14px;font-size:15px;cursor:pointer}
-  .radios input{accent-color:var(--orange)}
+  .radios label{position:relative;display:inline-flex;align-items:center;justify-content:center;border:1px solid #AEB6BB;border-radius:4px;
+       padding:8px 14px;font-size:15px;line-height:1;cursor:pointer}
+  .radios input{position:absolute;opacity:0;pointer-events:none}
   .radios label:has(input:checked){border-color:var(--onyx);background:var(--wash)}
 
   /* the one bold element: the gap selector */
@@ -65,7 +65,8 @@
 
   .actions{margin:40px 0 0 1.95em;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
   .btn{font:inherit;font-weight:700;font-size:16px;padding:12px 22px;border-radius:4px;
-       border:0;background:var(--onyx);color:var(--white);cursor:pointer}
+       border:0;background:var(--onyx);color:var(--white);cursor:pointer;
+       display:inline-flex;align-items:center;justify-content:center;line-height:1}
   .btn:hover{background:var(--slate)}
   .btn.quiet{background:var(--white);color:var(--onyx);border:1px solid #AEB6BB}
   .errbox{display:none;margin:28px 0 0 1.95em;border:1px solid var(--err);border-radius:4px;
@@ -91,7 +92,8 @@
   .scale{display:flex;border:1px solid #AEB6BB;border-radius:4px;overflow:hidden;width:max-content}
   .scale label{position:relative}
   .scale input{position:absolute;opacity:0}
-  .scale span{display:block;min-width:44px;text-align:center;padding:7px 6px;font-size:14px;
+  .scale span{display:inline-flex;align-items:center;justify-content:center;min-width:44px;
+       text-align:center;padding:7px 6px;font-size:14px;line-height:1;
        border-right:1px solid var(--line);cursor:pointer}
   .scale label:last-child span{border-right:0}
   .scale input:checked+span{background:var(--onyx);color:var(--white)}
