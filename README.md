@@ -9,6 +9,7 @@ No framework, no build step, no dependencies.
 - `assets/styles.css` — page styles.
 - `assets/app.js` — page behaviour (view toggle, validation, triage-record fill-in).
 - `assets/compass-logo.png` — header logo.
+- `assets/icon-32.png`, `assets/icon-180.png` — browser-tab icons, copied from `q_max`'s `public/`.
 - `docs/source/request-intake-mockup.html` — the original single-file mockup, kept for reference.
 
 ## Preview locally
