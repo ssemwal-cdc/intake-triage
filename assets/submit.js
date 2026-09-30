@@ -19,6 +19,11 @@
   window.submitRequest = function(payload){
     var cfg = window.INTAKE_CONFIG || {};
     if (!cfg.token) {
+      var h = location.hostname;
+      var isLocalPreview = h === 'localhost' || h === '127.0.0.1' || location.protocol === 'file:';
+      if (!isLocalPreview) {
+        return Promise.reject(new Error('Submissions are not connected. Nothing was sent.'));
+      }
       return new Promise(function(resolve){
         console.log(payload);
         resolve();

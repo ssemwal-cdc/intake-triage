@@ -127,6 +127,10 @@ async function run(){
 
       await page.goto(base + '/index.html');
 
+      // owner copy edit (2026-09-30 ruling)
+      ok('missHelp shows the owner-approved copy',
+        (await page.locator('#missHelp').innerText()) === 'Tell us the problem as you see it. A rough cost helps, if you know it.');
+
       // required errors (7): name, fn, short, steward, freq, miss, gap — before anything is filled
       await page.click('button[type=submit]');
       let errItems = await page.locator('#errs li').count();
@@ -306,6 +310,35 @@ async function run(){
       await pPage.waitForSelector('#done.show');
       ok('preview submit logs the payload', logs.some((l) => l.includes('Preview request')));
       ok('preview submit shows the confirmation', await pPage.locator('#done.show').isVisible());
+      await pContext.close();
+
+      // ---- empty token off localhost: must reject, never fake a submit ----
+      section(`Viewport ${width}px — empty token, non-local host`);
+      const npContext = await browser.newContext({ viewport: { width, height: 900 } });
+      const npPage = await npContext.newPage();
+      // Serve the same static files under a non-local hostname so location.hostname
+      // is neither localhost, 127.0.0.1 nor file:.
+      await npPage.route('http://intake.example.test/**', async (route) => {
+        const u = new URL(route.request().url());
+        const res = await fetch(base + u.pathname);
+        const body = await res.text();
+        route.fulfill({ status: res.status, contentType: res.headers.get('content-type') || 'text/html', body });
+      });
+      await withConfig(npPage, base, CONFIG_NO_TOKEN);
+      await npPage.goto('http://intake.example.test/index.html');
+      await npPage.fill('#name', 'Off Host User');
+      await npPage.fill('#fn', 'Ops');
+      await npPage.fill('#short', 'Off host request');
+      await npPage.fill('#steward', 'Off Host User');
+      await npPage.fill('#miss', 'Off host problem statement.');
+      await npPage.fill('#freq', 'Weekly');
+      await radioLabel(npPage, 'gap', 'See').click();
+      await npPage.click('button[type=submit]');
+      await npPage.waitForSelector('#errs.show');
+      const npErrText = await npPage.locator('#errs').innerText();
+      ok('empty token off localhost shows "not connected" error', /Submissions are not connected\. Nothing was sent\./.test(npErrText));
+      ok('empty token off localhost does not show the confirmation', !(await npPage.locator('#done.show').isVisible()));
+      await npContext.close();
 
       const tpContext = await browser.newContext({ viewport: { width, height: 900 } });
       const tpPage = await tpContext.newPage();

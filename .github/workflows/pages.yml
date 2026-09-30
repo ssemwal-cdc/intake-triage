@@ -36,9 +36,27 @@ jobs:
             const fs = require('fs');
             const p = '_site/assets/config.js';
             const token = process.env.INTAKE_TOKEN || '';
-            let src = fs.readFileSync(p, 'utf8');
-            src = src.replace(/token:\s*''/, 'token: ' + JSON.stringify(token));
-            fs.writeFileSync(p, src);
+            const before = fs.readFileSync(p, 'utf8');
+            const after = before.replace(/token:\s*''/, 'token: ' + JSON.stringify(token));
+            fs.writeFileSync(p, after);
+            if (/token:\s*''/.test(after) || after === before) {
+              console.error('INTAKE_TOKEN was not written into _site/assets/config.js (still empty, or replace did not change the file)');
+              process.exit(1);
+            }
+          "
+
+      - name: Cache-bust local asset references
+        run: |
+          set -eu
+          export SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          node -e "
+            const fs = require('fs');
+            const sha = process.env.SHORT_SHA;
+            for (const f of ['_site/index.html', '_site/triage.html']) {
+              let s = fs.readFileSync(f, 'utf8');
+              s = s.replace(/(src|href)=\"(assets\/[^\"]+\.(?:js|css))\"/g, (m, attr, p) => attr + '=\"' + p + '?v=' + sha + '\"');
+              fs.writeFileSync(f, s);
+            }
           "
 
       - name: Configure Pages
