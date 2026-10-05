@@ -366,10 +366,24 @@ async function run(){
       const pickerHtml = await tPage.locator('#reqBody').innerHTML();
       ok('table shows no raw ".json" filename text', !/\.json/i.test(pickerHtml));
       const pickerText = await tPage.locator('#reqBody').innerText();
-      ok('table shows short name, function, requester, date', /Vendor on-time tracker/.test(pickerText) &&
-        /Tax/.test(pickerText) && /Jordan Lee/.test(pickerText) && /\d{4}/.test(pickerText));
+      // function/requester/submitted columns are hidden at <=640px (only
+      // Request/Status/Total stay visible there, see the width-check below).
+      if (width > 640) {
+        ok('table shows short name, function, requester, date', /Vendor on-time tracker/.test(pickerText) &&
+          /Tax/.test(pickerText) && /Jordan Lee/.test(pickerText) && /\d{4}/.test(pickerText));
+      } else {
+        ok('375px: table shows short name (function/requester/date hidden)', /Vendor on-time tracker/.test(pickerText));
+      }
       ok('table shows "Not triaged" status before any save', /Not triaged/.test(pickerText));
       ok('count text shows "N of M requests"', (await tPage.locator('#reqCount').innerText()) === '7 of 7 requests');
+      {
+        const bodyText = await tPage.locator('body').innerText();
+        ok('live mode has no leftover mockup copy',
+          !/Sample record/.test(bodyText) && !/Preview only\./.test(bodyText) && !/access-controlled/.test(bodyText));
+        ok('empty record shows "Pick a request from the table above."',
+          (await tPage.locator('#emptyNote').innerText()) === 'Pick a request from the table above.' &&
+          await tPage.locator('#emptyNote').isVisible());
+      }
       ok('unscored row shows "—" for lenses and total', (await tableRowTexts(tPage))
         .some((r) => r[5] === '—' && r[9] === '—'));
       ok('default sort is Submitted, newest first', await headerAriaSort(tPage, 'submitted') === 'descending');
@@ -421,19 +435,26 @@ async function run(){
       await tPage.locator('#reqTable th[data-col="short"]').click();
       ok('sort toggles to descending on second click', await headerAriaSort(tPage, 'short') === 'descending');
 
-      await tPage.locator('#reqTable th[data-col="cost"]').click();
-      ok('sort by Cost: numeric, "—" sorts last (ascending)', (await tableRowTexts(tPage)).at(-1)[5] === '—');
-      await tPage.locator('#reqTable th[data-col="cost"]').click();
-      ok('sort by Cost: "—" still sorts last after toggling descending', (await tableRowTexts(tPage)).at(-1)[5] === '—');
+      // Cost and Function are hidden at <=640px (mobile keeps only Request/Status/Total),
+      // so only exercise their header-click sort at the desktop/tablet width.
+      if (width > 640) {
+        await tPage.locator('#reqTable th[data-col="cost"]').click();
+        ok('sort by Cost: numeric, "—" sorts last (ascending)', (await tableRowTexts(tPage)).at(-1)[5] === '—');
+        await tPage.locator('#reqTable th[data-col="cost"]').click();
+        ok('sort by Cost: "—" still sorts last after toggling descending', (await tableRowTexts(tPage)).at(-1)[5] === '—');
 
-      // Enter on a header sorts too
-      await tPage.locator('#reqTable th[data-col="function"]').focus();
-      await tPage.keyboard.press('Enter');
-      ok('Enter on a header sorts it', await headerAriaSort(tPage, 'function') !== 'none');
+        // Enter on a header sorts too
+        await tPage.locator('#reqTable th[data-col="function"]').focus();
+        await tPage.keyboard.press('Enter');
+        ok('Enter on a header sorts it', await headerAriaSort(tPage, 'function') !== 'none');
+      }
 
       // restore default sort for the rest of the flow: switching to a new column
-      // starts Submitted newest-first, Request/Function/etc. oldest/A-Z first
-      await tPage.locator('#reqTable th[data-col="submitted"]').click();
+      // starts Submitted newest-first, Request/Function/etc. oldest/A-Z first.
+      // Submitted is hidden (display:none) at <=640px, so a real click can't reach
+      // it there; this is test setup, not the user-facing behaviour under test, so
+      // dispatch the click directly.
+      await tPage.locator('#reqTable th[data-col="submitted"]').evaluate((el) => el.click());
       ok('switching to Submitted starts newest-first', await headerAriaSort(tPage, 'submitted') === 'descending');
 
       // ---- row open: click ----
@@ -479,6 +500,7 @@ async function run(){
       await radioLabel(tPage, 'lens-Cost', '1').click();
       await radioLabel(tPage, 'disp', 'Small rock').click();
       await tPage.fill('#ddate', '2026-10-03');
+      await tPage.fill('#tby', 'Jordan Lee');
       await tPage.fill('#note', 'Approved for next sprint.');
       await tPage.click('#saveT');
       await tPage.waitForFunction(() => document.getElementById('savedMsg').textContent.includes('saved'));
@@ -490,12 +512,15 @@ async function run(){
       ok('row Total updates in place after save', vendorCells[9] === '+1');
 
       // now that one row is scored, confirm numeric sort puts it first (desc) and dashes last
-      await tPage.locator('#reqTable th[data-col="cost"]').click();
-      await tPage.locator('#reqTable th[data-col="cost"]').click();
-      ok('sort by Cost descending: the one scored row (+1) sorts first',
-        (await tableRowTexts(tPage))[0][5] === '+1');
-      ok('sort by Cost descending: unscored rows ("—") still sort last',
-        (await tableRowTexts(tPage)).at(-1)[5] === '—');
+      // (Cost is hidden at <=640px, see note above)
+      if (width > 640) {
+        await tPage.locator('#reqTable th[data-col="cost"]').click();
+        await tPage.locator('#reqTable th[data-col="cost"]').click();
+        ok('sort by Cost descending: the one scored row (+1) sorts first',
+          (await tableRowTexts(tPage))[0][5] === '+1');
+        ok('sort by Cost descending: unscored rows ("—") still sort last',
+          (await tableRowTexts(tPage)).at(-1)[5] === '—');
+      }
 
       await tPage.reload();
       await tPage.waitForSelector('#reqBody tr');
@@ -504,6 +529,34 @@ async function run(){
       ok('reload shows the saved disposition', await tPage.locator('input[name=disp][value="Small rock"]').isChecked());
       ok('reload shows the saved fit answers', await tPage.locator('input[name=rd][value=Yes]').isChecked());
       ok('reload shows the saved note', (await tPage.locator('#note').inputValue()) === 'Approved for next sprint.');
+      ok('reload shows the saved "Triaged by"', (await tPage.locator('#tby').inputValue()) === 'Jordan Lee');
+      ok('record shows "Triaged by" after reload', (await rowValue(tPage, 'Triaged by')) === 'Jordan Lee');
+
+      // ---- save validation: disposition required, Redirect also needs "Redirect to" ----
+      {
+        let putSeen = false;
+        const putWatcher = (req) => { if (req.method() === 'PUT' && /\/contents\/submissions\//.test(req.url())) putSeen = true; };
+        tPage.on('request', putWatcher);
+        await selectRecordByName(tPage, 'Second request');
+        await tPage.click('#saveT');
+        await tPage.waitForFunction(() => document.getElementById('terrs').classList.contains('show'));
+        ok('save with no disposition shows "Pick a disposition." and sends no PUT',
+          (await tPage.locator('#terrs').innerText()) === 'Pick a disposition.' && !putSeen);
+
+        await radioLabel(tPage, 'disp', 'Redirect').click();
+        await tPage.click('#saveT');
+        await tPage.waitForFunction(() => document.getElementById('terrs').textContent.includes('redirect'));
+        ok('Redirect with empty "Redirect to" shows "Say where to redirect it." and sends no PUT',
+          (await tPage.locator('#terrs').innerText()) === 'Say where to redirect it.' && !putSeen);
+        tPage.off('request', putWatcher);
+
+        // ---- selected Fit radio and selected lens share the same computed background ----
+        await radioLabel(tPage, 'rd', 'Yes').click();
+        await radioLabel(tPage, 'lens-Cost', '1').click();
+        const fitBg = await radioLabel(tPage, 'rd', 'Yes').evaluate((el) => getComputedStyle(el).backgroundColor);
+        const lensBg = await tPage.locator('input[name="lens-Cost"][value="1"] + span').evaluate((el) => getComputedStyle(el).backgroundColor);
+        ok('selected Fit radio and selected lens share the same background color', fitBg === lensBg && fitBg !== 'rgba(0, 0, 0, 0)');
+      }
 
       if (width === 375) {
         const scrollWidth = await tPage.evaluate(() => document.documentElement.scrollWidth);
@@ -515,6 +568,73 @@ async function run(){
         ok('375px: requests table sits in its own overflow-x:auto container', wrapOverflowX === 'auto');
       }
       await tContext.close();
+
+      // ---- table width: long text must not push the table past its wrap at 1280;
+      // only Request/Status/Total stay visible at 375 ----
+      {
+        const wRepo = makeFakeRepo();
+        injectRecord(wRepo, 'submissions/wide.json', {
+          yourName: 'John Jenkins', shortName: 'Operations - Account Code Playbook', 'function': 'Operation Finance',
+          owner: 'John Jenkins', whatGoesWrong: 'x', envisionedSolution: '', cultureFactors: [], frequency: 'Once',
+          effort: '', users: '', informationLivesIn: [], closestGap: 'We take it on trust',
+          sensitiveData: 'No', systemConnection: 'No', systemAccess: '',
+          submittedAt: '2026-09-30T00:00:00.000Z', formTitle: 'Request Intake', schemaVersion: 1, triage: null
+        });
+        const wContext = await browser.newContext({ viewport: { width, height: 900 } });
+        const wPage = await wContext.newPage();
+        await withConfig(wPage, base, CONFIG_WITH_TOKEN);
+        await routeGithub(wPage, wRepo);
+        await wPage.goto(base + '/triage.html');
+        await wPage.waitForSelector('#reqBody tr');
+        if (width === 1280) {
+          const [tableW, wrapW] = await wPage.evaluate(() => [
+            document.querySelector('.reqTable').scrollWidth,
+            document.querySelector('.reqTableWrap').clientWidth
+          ]);
+          ok('1280px: requests table fits its wrap with a long-text row', tableW <= wrapW);
+        } else {
+          const visibleHeaders = await wPage.locator('#reqTable th').evaluateAll((ths) =>
+            ths.filter((th) => getComputedStyle(th).display !== 'none').map((th) => th.textContent.trim())
+          );
+          ok('375px: only Request, Status, Total headers are visible', JSON.stringify(visibleHeaders) === JSON.stringify(['Request', 'Status', 'Total']));
+        }
+        await wContext.close();
+      }
+
+      // ---- picking a row with reduced motion still scrolls (no animation, but it moves) ----
+      {
+        const rmContext = await browser.newContext({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
+        const rmPage = await rmContext.newPage();
+        await withConfig(rmPage, base, CONFIG_WITH_TOKEN);
+        await routeGithub(rmPage, repo);
+        await rmPage.goto(base + '/triage.html');
+        await rmPage.waitForSelector('#reqBody tr');
+        await selectRecordByName(rmPage, 'Vendor on-time tracker');
+        await rmPage.waitForFunction(() => document.getElementById('sampleDl').children.length > 0);
+        const scrollY = await rmPage.evaluate(() => window.scrollY);
+        ok('picking a row with reduced motion leaves scrollY > 0', scrollY > 0);
+        await rmContext.close();
+      }
+
+      // ---- a failed (401) list load shows the error and an empty count ----
+      {
+        const errContext = await browser.newContext({ viewport: { width, height: 900 } });
+        const errPage = await errContext.newPage();
+        await withConfig(errPage, base, CONFIG_WITH_TOKEN);
+        await errPage.route('https://api.github.com/**', (route) => {
+          const req = route.request();
+          if (req.method() === 'GET' && /\/contents\/submissions$/.test(new URL(req.url()).pathname)) {
+            return route.fulfill({ status: 401, body: JSON.stringify({ message: 'Bad credentials' }) });
+          }
+          return route.fulfill({ status: 404, body: '{}' });
+        });
+        await errPage.goto(base + '/triage.html');
+        await errPage.waitForFunction(() => /Could not load requests/.test(document.getElementById('listNote').textContent));
+        ok('401 list response shows "Could not load requests (401" and an empty count',
+          /Could not load requests \(401/.test(await errPage.locator('#listNote').innerText()) &&
+          (await errPage.locator('#reqCount').innerText()) === '');
+        await errContext.close();
+      }
 
       // ---- preview path: empty token ----
       section(`Viewport ${width}px — preview path (empty token)`);
