@@ -1,6 +1,6 @@
 # One-slide management summary of a request
 
-Status: proposed 2026-10-05; waits on the owner's word.
+Status: ruled 2026-10-05 by the owner: build the skill and the button, after the triage UX review lands.
 
 - Build as a Claude skill `request-slide`, not in triage.html. A static page has no Microsoft sign-in for SharePoint or Teams and no safe place for a model key.
 - Input: a submission file name. The skill reads it from `intake-submissions` with `gh`, and stops if triage is empty.
@@ -8,3 +8,4 @@ Status: proposed 2026-10-05; waits on the owner's word.
 - Slide, about 120 words: title (short name and disposition); the ask; who and how often; triage scores and note; 2 to 3 context bullets with numbered source markers, sources in speaker notes.
 - Output: a .pptx in a local folder the owner names. Nothing is uploaded.
 - triage.html gets one "Copy slide prompt" button that copies the request's file name in a ready prompt.
+- The skill ships one fixed slide template, so every slide looks the same: Compass design language (onyx #141E27, slate #34444D, orange #F37820, #B3530C for small orange text, Arial, the Compass logo from assets/compass-logo.png). The template's layout and type sizes never vary per request; only the text fills change.
