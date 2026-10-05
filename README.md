@@ -102,13 +102,13 @@ Once triaged, `triage` on the same file becomes an object. For example:
 
 ## Check that proves it works
 
-`scripts/e2e.mjs` is a Playwright script. It stays outside the site's own dependency tree. Run
+`scripts/e2e.test.mjs` is a Playwright script. It stays outside the site's own dependency tree. Run
 it from any folder with Playwright installed. For example:
 
 ```
 mkdir -p /tmp/intake-e2e && cd /tmp/intake-e2e
 npm init -y >/dev/null && npm i -D playwright >/dev/null && npx playwright install chromium
-node /path/to/intake_triage/scripts/e2e.mjs
+node /path/to/intake_triage/scripts/e2e.test.mjs
 ```
 
 It starts `python -m http.server` on a free port other than 8000. It intercepts `api.github.com`

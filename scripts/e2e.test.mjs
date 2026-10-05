@@ -2,7 +2,7 @@
 // Playwright e2e check for the intake/triage static site.
 // Kept outside the site's own dependency tree (see README "Check that proves it works").
 // Run from a folder with Playwright installed:
-//   node /path/to/intake_triage/scripts/e2e.mjs
+//   node /path/to/intake_triage/scripts/e2e.test.mjs
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import net from 'node:net';

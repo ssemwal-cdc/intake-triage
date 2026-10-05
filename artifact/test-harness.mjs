@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Playwright check for artifact/intake-artifact.html.
-// Kept outside the repo's own dependency tree, same as scripts/e2e.mjs.
+// Kept outside the repo's own dependency tree, same as scripts/e2e.test.mjs.
 // Run from a folder with Playwright installed:
 //   node /path/to/intake_triage/artifact/test-harness.mjs
 import { chromium } from 'playwright';
