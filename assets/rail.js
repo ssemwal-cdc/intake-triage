@@ -187,16 +187,28 @@
   form.addEventListener('reset', function(){ setTimeout(recompute, 0); });
 
   // ---- scroll-spy ----
-  var ratios = new Map();
-  var io = new IntersectionObserver(function(observerEntries){
-    observerEntries.forEach(function(e){ ratios.set(e.target, e.intersectionRatio); });
-    var best = null, bestRatio = 0;
+  // Current = the last section whose top has passed a line near the top of the
+  // viewport. On narrow widths the rail is a sticky top bar that sits over the
+  // page, so the line sits below it, at the bar's own rendered height; on wide
+  // layouts the rail is a side column, so the line sits at the viewport top.
+  // Falls back to step 1 while nothing has passed the line yet (top of page),
+  // and snaps to the last step once the page is scrolled to the bottom (its
+  // own top may never reach the line if it is shorter than the viewport).
+  var mobileRail = window.matchMedia('(max-width:640px)');
+  var NEAR_TOP_BUFFER = 24; // "near the top", not pinned to the exact edge
+  function lineOffset(){
+    return (mobileRail.matches ? rail.getBoundingClientRect().height : 0) + NEAR_TOP_BUFFER;
+  }
+  function updateCurrent(){
+    var line = lineOffset();
+    var current = entries[0];
+    for (var i = 0; i < entries.length; i++){
+      if (entries[i].step.getBoundingClientRect().top <= line) current = entries[i];
+    }
+    var atBottom = (window.scrollY + window.innerHeight) >= (document.documentElement.scrollHeight - 1);
+    if (atBottom) current = entries[entries.length - 1];
     entries.forEach(function(entry){
-      var r = ratios.get(entry.step) || 0;
-      if(r > bestRatio){ bestRatio = r; best = entry; }
-    });
-    entries.forEach(function(entry){
-      var isCurrent = entry === best && bestRatio > 0;
+      var isCurrent = entry === current;
       entry.btn.classList.toggle('is-current', isCurrent);
       entry.dot.classList.toggle('is-current', isCurrent);
       if(isCurrent){
@@ -207,8 +219,25 @@
         entry.dot.removeAttribute('aria-current');
       }
     });
-  }, { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] });
-  steps.forEach(function(s){ io.observe(s); });
+  }
+  // A plain 'scroll' listener covers user-driven scrolling (wheel, trackpad,
+  // keyboard), but the browser fires that event on its own render-frame
+  // schedule, a frame or more after a programmatic jump. Wrapping the two ways
+  // script moves the page (scrollTo/scrollBy, and our own step buttons'
+  // scrollIntoView) updates aria-current in the same call, so a caller that
+  // scrolls and immediately reads the rail sees it already in sync.
+  window.addEventListener('scroll', updateCurrent, { passive: true });
+  window.addEventListener('resize', updateCurrent);
+  ['scrollTo', 'scrollBy'].forEach(function(name){
+    var native = window[name].bind(window);
+    window[name] = function(){ native.apply(window, arguments); updateCurrent(); };
+  });
+  var nativeScrollIntoView = Element.prototype.scrollIntoView;
+  Element.prototype.scrollIntoView = function(){
+    nativeScrollIntoView.apply(this, arguments);
+    updateCurrent();
+  };
+  updateCurrent();
 
   // ---- hide after submit, show + reset on "Start another request" ----
   if(done){
