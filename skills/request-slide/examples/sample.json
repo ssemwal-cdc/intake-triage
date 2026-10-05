@@ -1,0 +1,26 @@
+{
+  "title_name": "Entity-level tax allocation check",
+  "disposition": "Small rock",
+  "ask": "Automate the hand re-check of entity-level tax allocation each close, so a step is never missed under deadline pressure.",
+  "who_how_often": "Tax team, once per close cycle, per project.",
+  "triage": {
+    "cost": -1,
+    "risk": 1,
+    "time": 2,
+    "benefit": 2,
+    "total": 4,
+    "fit": "Yes, data exists",
+    "decision_date": "2026-10-15",
+    "note": "Fits within a month; owner confirmed."
+  },
+  "context_bullets": [
+    "Entity allocation is re-checked by hand every close today (sample). [1]",
+    "Data lives in NetSuite and Excel models, not one system (sample). [2]"
+  ],
+  "footer_source": "2026-09-30-entity-level-tax-allocation-check-sample.json",
+  "footer_date": "2026-10-05",
+  "notes_sources": [
+    {"n": 1, "title": "Sample source, no SharePoint/Teams search run", "link": "n/a", "date": "2026-10-05", "unverified": true},
+    {"n": 2, "title": "Sample source, no SharePoint/Teams search run", "link": "n/a", "date": "2026-10-05", "unverified": true}
+  ]
+}

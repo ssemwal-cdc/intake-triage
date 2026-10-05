@@ -22,6 +22,8 @@
   var emptyNote = document.getElementById('emptyNote');
   var terrs = document.getElementById('terrs'), savedMsg = document.getElementById('savedMsg');
   var saveT = document.getElementById('saveT');
+  var copySlidePrompt = document.getElementById('copySlidePrompt');
+  var slidePromptFallback = document.getElementById('slidePromptFallback');
   var currentPath = null;
   var entries = []; // [{path, rec}], loaded once by refreshList
   var filters = { status: '', fn: '', search: '' };
@@ -257,6 +259,29 @@
     fillTriage(null);
     savedMsg.textContent = 'Preview only.';
   }
+
+  copySlidePrompt.onclick = function(){
+    if(!currentPath){ terrs.textContent = 'Pick a request first.'; terrs.classList.add('show'); return; }
+    var prompt = 'Make the management slide for ' + currentPath;
+    function showCopied(){ savedMsg.textContent = 'Copied.'; }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(prompt).then(showCopied, function(){
+        slidePromptFallback.value = prompt;
+        slidePromptFallback.style.position = 'static';
+        slidePromptFallback.style.width = 'auto';
+        slidePromptFallback.style.height = 'auto';
+        slidePromptFallback.select();
+        showCopied();
+      });
+    } else {
+      slidePromptFallback.value = prompt;
+      slidePromptFallback.style.position = 'static';
+      slidePromptFallback.style.width = 'auto';
+      slidePromptFallback.style.height = 'auto';
+      slidePromptFallback.select();
+      showCopied();
+    }
+  };
 
   if(!cfg.token){
     listNote.textContent = 'Preview only. No token set: showing the sample record.';
