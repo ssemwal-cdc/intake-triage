@@ -705,7 +705,11 @@ async function run(){
       await page.goto(base + '/index.html');
 
       const railHeadings = await page.locator('#f .step h2').evaluateAll((els) =>
-        els.map((el) => { const c = el.cloneNode(true); c.querySelector('.n')?.remove(); return c.textContent.trim(); })
+        els.map((el) => {
+          const override = el.getAttribute('data-rail');
+          if (override) return override;
+          const c = el.cloneNode(true); c.querySelector('.n')?.remove(); return c.textContent.trim();
+        })
       );
       const stepButtons = width <= 640 ? page.locator('#progressRail .rail-dot-btn') : page.locator('#progressRail .rail-step');
       ok('rail has 5 steps', await stepButtons.count() === 5);
@@ -746,28 +750,53 @@ async function run(){
       await page.fill('#miss', 'Testing the rail.');
       await page.fill('#freq', 'Weekly');
       ok('percent below 100 before gap is picked', parseInt(await percentText(), 10) > 0 && parseInt(await percentText(), 10) < 100);
+      if (width > 640) {
+        const segStatesPartial = await page.locator('#progressRail .rail-seg').evaluateAll((els) => els.map((el) => el.getAttribute('data-state')));
+        ok('not all rail segments are done before gap is picked', segStatesPartial.some((s) => s !== 'done'));
+      }
       await radioLabel(page, 'gap', 'See').click();
       ok('percent reaches 100% once all 7 required answers are given', (await percentText()) === '100%');
       ok('"Ready to submit" shown at 100%', (await page.locator('#railStatus').innerText()) === 'Ready to submit');
       if (width > 640) {
-        await page.waitForTimeout(300); // let the fill's height transition settle
-        const [trackLen, fillLen] = await page.evaluate(() => [
-          document.querySelector('#progressRail .rail-track-v').offsetHeight,
-          document.querySelector('#progressRail .rail-fill-v').offsetHeight
-        ]);
-        ok('vertical fill runs the full track height at 100%', trackLen > 0 && Math.abs(fillLen - trackLen) <= 1);
+        // Segments 0 (step1), 1 (step2) and 3 (step4) sit after required steps and
+        // go done once those requirements are met. Segment 2 (step3, "Where") has
+        // no required field, so it stays not-done until something is typed there.
+        const segStates = await page.locator('#progressRail .rail-seg').evaluateAll((els) => els.map((el) => el.getAttribute('data-state')));
+        ok('rail segments go done once their step is complete',
+          segStates.length === 4 && segStates[0] === 'done' && segStates[1] === 'done' && segStates[2] === 'none' && segStates[3] === 'done');
       }
 
       // scroll-spy marks aria-current on the section in view (checked on the visible
       // representation only: the rail keeps a mirrored, display:none dot/step list in
       // sync for the other breakpoint, and that hidden twin also carries the attribute).
       const visibleCurrentSel = width <= 640 ? '#progressRail .rail-dot-btn[aria-current="step"]' : '#progressRail .rail-step[aria-current="step"]';
+      function waitForCurrentLabel(matchText){
+        return page.waitForFunction(({ sel, text }) => {
+          const el = document.querySelector(sel);
+          const label = el ? (el.textContent || el.getAttribute('aria-label') || '') : '';
+          return label.indexOf(text) !== -1;
+        }, { sel: visibleCurrentSel, text: matchText }, { timeout: 2000 }).catch(() => {});
+      }
+
       await page.evaluate(() => document.getElementById('s1').scrollIntoView());
-      await page.waitForFunction((sel) => document.querySelectorAll(sel).length === 1, visibleCurrentSel, { timeout: 3000 }).catch(() => {});
+      await waitForCurrentLabel('About');
       const currentCount = await page.locator(visibleCurrentSel).count();
       ok('scroll-spy marks exactly one step as aria-current', currentCount === 1);
       ok('scroll-spy current step is step 1 after scrolling to section 1',
-        await page.locator(visibleCurrentSel).first().evaluate((el) => /1|About the Request/.test(el.textContent || el.getAttribute('aria-label') || '')));
+        await page.locator(visibleCurrentSel).first().evaluate((el) => /About/.test(el.textContent || el.getAttribute('aria-label') || '')));
+
+      // scrolling section 3 ("Where") to the top of the viewport should mark it
+      // current. Known bug: step 4 is marked instead, so this wait times out and
+      // the assertion below reads the (wrong) settled state.
+      await page.evaluate(() => {
+        const el = document.getElementById('s3');
+        window.scrollTo(0, el.offsetTop - 20);
+      });
+      await waitForCurrentLabel('Where');
+      const s3Label = width <= 640
+        ? await page.locator(visibleCurrentSel).first().getAttribute('aria-label')
+        : await page.locator(`${visibleCurrentSel} .rail-label`).first().innerText();
+      ok('scroll-spy marks "Where" current when section 3 is scrolled to top', s3Label === 'Where');
 
       // submit and confirm the rail hides, then reappears at 0% after "Start another request"
       await page.click('button[type=submit]');

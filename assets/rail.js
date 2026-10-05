@@ -113,6 +113,7 @@
       var behavior = reduced.matches ? 'auto' : 'smooth';
       step.scrollIntoView({ behavior: behavior, block: 'start' });
       h2.focus({ preventScroll: true });
+      updateCurrent();
     }
     btn.addEventListener('click', go);
     dot.addEventListener('click', go);
@@ -187,16 +188,28 @@
   form.addEventListener('reset', function(){ setTimeout(recompute, 0); });
 
   // ---- scroll-spy ----
-  var ratios = new Map();
-  var io = new IntersectionObserver(function(observerEntries){
-    observerEntries.forEach(function(e){ ratios.set(e.target, e.intersectionRatio); });
-    var best = null, bestRatio = 0;
+  // Current = the last section whose top has passed a line near the top of the
+  // viewport. On narrow widths the rail is a sticky top bar that sits over the
+  // page, so the line sits below it, at the bar's own rendered height; on wide
+  // layouts the rail is a side column, so the line sits at the viewport top.
+  // Falls back to step 1 while nothing has passed the line yet (top of page),
+  // and snaps to the last step once the page is scrolled to the bottom (its
+  // own top may never reach the line if it is shorter than the viewport).
+  var mobileRail = window.matchMedia('(max-width:640px)');
+  var NEAR_TOP_BUFFER = 24; // "near the top", not pinned to the exact edge
+  function lineOffset(){
+    return (mobileRail.matches ? rail.getBoundingClientRect().height : 0) + NEAR_TOP_BUFFER;
+  }
+  function updateCurrent(){
+    var line = lineOffset();
+    var current = entries[0];
+    for (var i = 0; i < entries.length; i++){
+      if (entries[i].step.getBoundingClientRect().top <= line) current = entries[i];
+    }
+    var atBottom = (window.scrollY + window.innerHeight) >= (document.documentElement.scrollHeight - 1);
+    if (atBottom) current = entries[entries.length - 1];
     entries.forEach(function(entry){
-      var r = ratios.get(entry.step) || 0;
-      if(r > bestRatio){ bestRatio = r; best = entry; }
-    });
-    entries.forEach(function(entry){
-      var isCurrent = entry === best && bestRatio > 0;
+      var isCurrent = entry === current;
       entry.btn.classList.toggle('is-current', isCurrent);
       entry.dot.classList.toggle('is-current', isCurrent);
       if(isCurrent){
@@ -207,8 +220,21 @@
         entry.dot.removeAttribute('aria-current');
       }
     });
-  }, { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] });
-  steps.forEach(function(s){ io.observe(s); });
+  }
+  // A passive 'scroll' listener, rAF-throttled so it runs at most once per
+  // frame, covers all scrolling (wheel, trackpad, keyboard, programmatic).
+  // The rail's own step buttons (go(), above) also call updateCurrent()
+  // directly after they scroll, so clicking one updates the rail without
+  // waiting on that next frame.
+  var spyRafPending = false;
+  function scheduleSpyUpdate(){
+    if(spyRafPending) return;
+    spyRafPending = true;
+    requestAnimationFrame(function(){ spyRafPending = false; updateCurrent(); });
+  }
+  window.addEventListener('scroll', scheduleSpyUpdate, { passive: true });
+  window.addEventListener('resize', scheduleSpyUpdate);
+  updateCurrent();
 
   // ---- hide after submit, show + reset on "Start another request" ----
   if(done){
