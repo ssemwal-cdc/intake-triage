@@ -17,12 +17,11 @@
 
   <main id="triage">
     <h1>Triage</h1>
-    <p class="internal">Internal only. Requesters never see this. Build it as a separate, access-controlled view,
-      not a section of the public form.</p>
+    <p class="internal">Internal. For the CFO team's triage of submitted requests.</p>
 
     <section class="step" aria-labelledby="t0">
       <h2 id="t0"><span class="n">&#8226;</span>Requests</h2>
-      <p class="intro" id="listNote">Preview only.</p>
+      <p class="intro" id="listNote"></p>
       <div class="reqFilters">
         <label class="reqFilter"><span class="q">Status</span>
           <select id="fStatus">
@@ -64,15 +63,14 @@
 
     <section class="step" aria-labelledby="t1">
       <h2 id="t1"><span class="n">1</span>The Request</h2>
-      <div class="field sample"><dl id="sampleDl"></dl></div>
-      <p class="intro" id="sampleNote" style="margin-top:8px">Sample record. Submitting the requester form fills this with that submission.</p>
+      <div class="field sample"><dl id="sampleDl"></dl><p class="intro" id="emptyNote" hidden>Pick a request from the table above.</p></div>
+      <p class="intro" id="sampleNote" style="margin-top:8px"></p>
     </section>
 
     <section class="step" aria-labelledby="t2">
       <h2 id="t2"><span class="n">2</span>Business Lens</h2>
-      <p class="intro">Same four lenses as the PMO intake, scored here rather than by the requester.</p>
+      <p class="intro">Score each lens from &minus;3 to +3. +3 always favours doing the work: low cost, low risk, saves time, high benefit.</p>
       <div class="field" id="lenses"></div>
-      <p class="scale-key">Minus three is strongly against, plus three strongly in favor.</p>
     </section>
 
     <section class="step" aria-labelledby="t3">
@@ -84,7 +82,7 @@
         <div class="radios" role="radiogroup" aria-labelledby="deL">
           <label><input type="radio" name="de" value="Yes">Yes</label><label><input type="radio" name="de" value="Partly">Partly</label>
           <label><input type="radio" name="de" value="No">No</label></div></div>
-      <div class="field"><span class="q" id="scL">Owner confirmed</span>
+      <div class="field"><span class="q" id="scL">Owner once built is confirmed</span>
         <div class="radios" role="radiogroup" aria-labelledby="scL">
           <label><input type="radio" name="sc" value="Yes">Yes</label><label><input type="radio" name="sc" value="No">No</label></div></div>
     </section>
@@ -95,16 +93,26 @@
         <div class="radios" role="radiogroup" aria-labelledby="dispL">
           <label><input type="radio" name="disp" value="Big rock">Big rock</label><label><input type="radio" name="disp" value="Small rock">Small rock</label>
           <label><input type="radio" name="disp" value="Backlog">Backlog</label><label><input type="radio" name="disp" value="Redirect">Redirect</label>
-          <label><input type="radio" name="disp" value="Decline">Decline</label></div></div>
+          <label><input type="radio" name="disp" value="Decline">Decline</label></div>
+        <ul class="dispHints">
+          <li><strong>Big rock</strong> &mdash; a quarter-level project.</li>
+          <li><strong>Small rock</strong> &mdash; fits within a month.</li>
+          <li><strong>Backlog</strong> &mdash; worth doing, not now.</li>
+          <li><strong>Redirect</strong> &mdash; belongs with another team.</li>
+          <li><strong>Decline</strong> &mdash; we won't do it.</li>
+        </ul>
+      </div>
       <div class="field row">
         <div><label class="q" for="ddate">Decision date</label><input type="date" id="ddate"></div>
         <div><label class="q" for="rto">Redirect to <span class="opt">(if redirected)</span></label><input type="text" id="rto"></div>
       </div>
-      <div class="field"><label class="q" for="note">Note back to the requester</label><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
+      <div class="field"><label class="q" for="tby">Triaged by <span class="opt">(optional)</span></label>
+        <input type="text" id="tby"></div>
+      <div class="field"><label class="q" for="note">Note (saved with the outcome, not sent to the requester)</label><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
         <textarea id="note"></textarea></div>
       <div class="errbox" id="terrs" role="alert" tabindex="-1"></div>
       <div class="actions"><button type="button" class="btn" id="saveT">Save outcome</button>
-        <span class="preview" id="savedMsg">Preview only.</span></div>
+        <span class="preview" id="savedMsg"></span></div>
     </section>
   </main>
 

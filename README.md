@@ -94,6 +94,7 @@ Once triaged, `triage` on the same file becomes an object. For example:
   "disposition": "Small rock",
   "decisionDate": "2026-10-03",
   "redirectTo": "",
+  "triagedBy": "Shivam Semwal",
   "note": "Approved for next sprint.",
   "savedAt": "2026-10-03T09:00:00.000Z"
 }

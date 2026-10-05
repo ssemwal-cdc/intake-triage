@@ -19,6 +19,7 @@
   var reqCount = document.getElementById('reqCount'), reqBody = document.getElementById('reqBody');
   var fStatus = document.getElementById('fStatus'), fFunction = document.getElementById('fFunction'), fSearch = document.getElementById('fSearch');
   var sampleDl = document.getElementById('sampleDl'), sampleNote = document.getElementById('sampleNote');
+  var emptyNote = document.getElementById('emptyNote');
   var terrs = document.getElementById('terrs'), savedMsg = document.getElementById('savedMsg');
   var saveT = document.getElementById('saveT');
   var currentPath = null;
@@ -224,6 +225,7 @@
       ['System access', systemAccessText(rec)],
       ['Submitted', fmtDate(rec.submittedAt) || 'Not given']
     ];
+    if(rec.triage && rec.triage.triagedBy) rows.push(['Triaged by', rec.triage.triagedBy]);
     sampleDl.innerHTML = '';
     rows.forEach(function(r){ var dt=document.createElement('dt'),dd=document.createElement('dd');
       dt.textContent=r[0]; dd.textContent=r[1]; sampleDl.appendChild(dt); sampleDl.appendChild(dd); });
@@ -245,6 +247,7 @@
     setRadio('disp', t.disposition);
     document.getElementById('ddate').value = t.decisionDate || '';
     document.getElementById('rto').value = t.redirectTo || '';
+    document.getElementById('tby').value = t.triagedBy || '';
     document.getElementById('note').value = t.note || '';
   }
 
@@ -262,6 +265,8 @@
     saveT.onclick = function(){ savedMsg.textContent = 'Outcome saved in this preview only.'; };
     return;
   }
+
+  emptyNote.hidden = false;
 
   function api(path, opts){
     opts = opts || {};
@@ -286,18 +291,23 @@
   // ponytail: one GET per submission to build the requests table (name, function, requester,
   // date, status, scores). Fine at today's volume; add a repo-side index file if submissions
   // pass ~100.
+  function httpError(res, body){
+    var reason = (body && body.message) || res.statusText || 'unknown error';
+    return { status: res.status, reason: reason };
+  }
+
   function refreshList(){
     listNote.textContent = 'Loading submissions...';
     api('submissions').then(function(res){
       if(res.status === 404) return [];
-      if(!res.ok) throw new Error('Could not list submissions (' + res.status + ')');
+      if(!res.ok) return res.json().catch(function(){ return null; }).then(function(body){ throw httpError(res, body); });
       return res.json();
     }).then(function(items){
       items = items.filter(function(i){ return i.type==='file' && /\.json$/.test(i.name); });
       if(!items.length) return [];
       return Promise.all(items.map(function(it){
         return api(it.path).then(function(res){
-          if(!res.ok) throw new Error('Could not open ' + it.name + ' (' + res.status + ')');
+          if(!res.ok) return res.json().catch(function(){ return null; }).then(function(body){ throw httpError(res, body); });
           return res.json();
         }).then(function(file){
           var rec = JSON.parse(b64ToUtf8(file.content));
@@ -312,23 +322,35 @@
       updateAriaSort();
       renderTable();
     }).catch(function(err){
-      listNote.textContent = err.message;
+      var status = err && err.status !== undefined ? err.status : 'error';
+      var reason = err && err.reason !== undefined ? err.reason : (err && err.message) || 'unknown error';
+      reqCount.textContent = '';
+      listNote.textContent = 'Could not load requests (' + status + ': ' + reason + '). Reload, or tell Shivam.';
     });
   }
 
   function selectEntry(e){
     currentPath = e.path;
+    emptyNote.hidden = true;
     renderRecord(e.rec);
     sampleNote.textContent = '';
     fillTriage(e.rec.triage);
     savedMsg.textContent = '';
     terrs.classList.remove('show');
     renderTable();
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.getElementById('t1').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
   }
 
   saveT.onclick = function(){
-    if(!currentPath){ terrs.innerHTML = 'Pick a submission first.'; terrs.classList.add('show'); return; }
+    if(!currentPath){ terrs.textContent = 'Pick a submission first.'; terrs.classList.add('show'); return; }
     function radioVal(name){ var el = document.querySelector('input[name="'+name+'"]:checked'); return el ? el.value : null; }
+    var disposition = radioVal('disp');
+    var redirectTo = document.getElementById('rto').value.trim();
+    var validationError = !disposition ? 'Pick a disposition.'
+      : (disposition === 'Redirect' && !redirectTo ? 'Say where to redirect it.' : null);
+    if(validationError){ terrs.textContent = validationError; terrs.classList.add('show'); return; }
+    terrs.classList.remove('show');
     var lenses = {};
     ['Cost','Risk','Time','Benefit'].forEach(function(l){
       var v = radioVal('lens-'+l); lenses[l] = v === null ? null : Number(v);
@@ -338,9 +360,10 @@
       dataExists: radioVal('de'),
       ownerConfirmed: radioVal('sc'),
       lenses: lenses,
-      disposition: radioVal('disp'),
+      disposition: disposition,
       decisionDate: document.getElementById('ddate').value || '',
-      redirectTo: document.getElementById('rto').value.trim(),
+      redirectTo: redirectTo,
+      triagedBy: document.getElementById('tby').value.trim(),
       note: document.getElementById('note').value.trim(),
       savedAt: new Date().toISOString()
     };
@@ -372,7 +395,7 @@
       if(entry) entry.rec = savedRec;
       renderTable();
     }).catch(function(err){
-      terrs.innerHTML = err.message; terrs.classList.add('show');
+      terrs.textContent = err.message; terrs.classList.add('show');
     }).then(function(){
       saveT.disabled = false;
     }, function(){

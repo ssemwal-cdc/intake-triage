@@ -48,7 +48,9 @@
   .radios label{position:relative;display:inline-flex;align-items:center;justify-content:center;border:1px solid #AEB6BB;border-radius:4px;
        padding:8px 14px;font-size:15px;line-height:1;cursor:var(--pick)}
   .radios input{position:absolute;opacity:0;pointer-events:none}
-  .radios label:has(input:checked){border-color:var(--onyx);background:var(--wash)}
+  .radios label:has(input:checked){border-color:var(--onyx);background:var(--onyx);color:var(--white)}
+  .dispHints{list-style:none;margin:10px 0 0;padding:0;color:var(--muted);font-size:14px}
+  .dispHints li{margin:2px 0}
 
   /* the one bold element: the gap selector */
   .tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -96,8 +98,9 @@
   .reqSearch input{width:100%}
   .reqCount{margin:0 0 10px 1.95em;color:var(--muted);font-size:13.5px}
   .reqTableWrap{margin:0 0 20px 1.95em;overflow-x:auto;border:1px solid var(--line);border-radius:6px}
-  table.reqTable{border-collapse:collapse;width:100%;min-width:760px;font-size:14px}
+  table.reqTable{border-collapse:collapse;width:100%;font-size:14px}
   .reqTable th,.reqTable td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  .reqTable th:first-child,.reqTable td:first-child{white-space:normal}
   .reqTable thead th{background:var(--wash);font-weight:700;cursor:var(--pick);user-select:none}
   .reqTable thead th:focus-visible{outline:3px solid rgba(243,120,32,.45);outline-offset:-3px}
   .reqTable th[aria-sort="ascending"]::after{content:" \2191"}
@@ -124,7 +127,6 @@
   .scale label:last-child span{border-right:0}
   .scale input:checked+span{background:var(--onyx);color:var(--white)}
   .scale input:focus-visible+span{outline:3px solid rgba(243,120,32,.45);outline-offset:-3px}
-  .scale-key{font-size:13.5px;color:var(--muted);margin:2px 0 14px 102px}
   /* no single-word last lines at any width */
   p,.help,.intro,.d,dd,.lede,.notes p,label.q,.q,.check{text-wrap:pretty}
   h1,h2,.t{text-wrap:balance}
@@ -140,11 +142,18 @@
     .culture{gap:12px}
     .field,.step .intro,.actions,.errbox{margin-left:0}
     .reqFilters{flex-direction:column;align-items:stretch;margin-left:0}
+    .reqSearch{flex-basis:auto}
+    .reqTable th:nth-child(2),.reqTable td:nth-child(2),
+    .reqTable th:nth-child(3),.reqTable td:nth-child(3),
+    .reqTable th:nth-child(4),.reqTable td:nth-child(4),
+    .reqTable th:nth-child(6),.reqTable td:nth-child(6),
+    .reqTable th:nth-child(7),.reqTable td:nth-child(7),
+    .reqTable th:nth-child(8),.reqTable td:nth-child(8),
+    .reqTable th:nth-child(9),.reqTable td:nth-child(9){display:none}
     .reqCount,.reqTableWrap{margin-left:0}
     header.top{flex-direction:column;align-items:flex-start}
     .sample dl{grid-template-columns:1fr}
     .lens{grid-template-columns:1fr}
-    .scale-key{margin-left:0}
   }
   @media (prefers-reduced-motion:no-preference){
     .done.show{animation:rise .25s ease-out}
