@@ -3,11 +3,13 @@
 
 Builds one slide inside the official Compass master
 (Template_Powerpoint_Master_V2.1_03-27-25.pptx): its "Business Lens - White"
-slide, trimmed to the single slide, with the title and the Cost/Risk/Time/
-Benefit tables reused as-is (resized into a score row) and a matching Total
-tile added. Ask / who / context are added as plain text boxes. The master's
-own footer, tagline and logo come from its layout; this script never draws
-its own band or logo.
+slide, trimmed to the single slide, title reused as-is. The master's own
+Cost/Risk/Time/Benefit tables are dropped (they carry "-- / ++" scale
+markers and empty cells meant for a full-page Business Lens slide, not a
+compact score row); five plain score tiles are drawn instead, in the
+brief's own colors. Ask / who / triage / context are plain text boxes. The
+master's own footer, tagline and logo come from its layout; this script
+never draws its own band or logo.
 
 Usage: python build_slide.py <fields.json> <out.pptx> [--master <path>]
 
@@ -21,21 +23,22 @@ ship with overflow text silently truncated by auto-shrink: this script fails
 loudly instead. The skill must shorten text itself before calling this.
 """
 import argparse
-import copy
 import json
 import os
-import sys
 from pathlib import Path
 
 from pptx import Presentation
 from pptx.util import Pt, Emu
 from pptx.dml.color import RGBColor
-from pptx.shapes.graphfrm import GraphicFrame
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.enum.shapes import MSO_SHAPE
 
 ONYX = RGBColor(0x14, 0x1E, 0x27)
 SLATE = RGBColor(0x34, 0x44, 0x4D)
 ORANGE = RGBColor(0xF3, 0x78, 0x20)
 ORANGE_SMALL = RGBColor(0xB3, 0x53, 0x0C)
+TILE_BODY_BG = RGBColor(0xF3, 0xF4, 0xF5)
+WHITE = RGBColor(0xFF, 0xFF, 0xFF)
 FONT = 'Arial'
 
 DEFAULT_MASTER = (
@@ -44,6 +47,11 @@ DEFAULT_MASTER = (
 )
 
 LENS_ORDER = ['Cost', 'Risk', 'Time', 'Benefit']
+
+# Consistent vertical rhythm: every section (Ask, Who, Triage, Context)
+# starts GAP after the previous one ends, so spacing reads as one system
+# and there is no large empty band.
+GAP = 220000
 
 
 def word_count(text):
@@ -106,61 +114,51 @@ def keep_only_slide(prs, keep_index):
         xml_slides.remove(sld)
 
 
-def set_run_text(cell, row_idx, text, size_pt=None, bold=None):
-    """Replace a table cell's text, keeping its first run's formatting
-    (font, color) so it still matches the template's look."""
-    tf = cell.text_frame
+def drop_lens_tables(slide):
+    """Remove the master's own Cost/Risk/Time/Benefit tables. They carry
+    "-- / ++" scale markers and blank body cells sized for a full-page
+    Business Lens slide; a compact score row is built fresh instead."""
+    for sh in list(slide.shapes):
+        if sh.has_table:
+            sh._element.getparent().remove(sh._element)
+
+
+def set_text(tf, text, size, color, bold=True, align=PP_ALIGN.CENTER):
+    tf.clear()
+    tf.word_wrap = True
+    tf.vertical_anchor = MSO_ANCHOR.MIDDLE
     p = tf.paragraphs[0]
-    if not p.runs:
-        p.add_run()
-    run = p.runs[0]
+    p.alignment = align
+    run = p.add_run()
     run.text = text
-    for extra in p.runs[1:]:
-        extra.text = ''
-    for extra_p in tf.paragraphs[1:]:
-        for r in extra_p.runs:
-            r.text = ''
-    if size_pt is not None:
-        run.font.size = Pt(size_pt)
-    if bold is not None:
-        run.font.bold = bold
-    return run
+    run.font.name = FONT
+    run.font.size = Pt(size)
+    run.font.color.rgb = color
+    run.font.bold = bold
 
 
-def rescale_table(gframe, left, top, width, height, col_fractions):
-    """Resize a cloned/reused table's columns and rows to fit a new frame.
-    A table's rendered size is the sum of its own column widths and row
-    heights, not the graphic frame's xfrm, so both must be set. Columns use
-    explicit fractions (not the original proportions): the original middle
-    column was sized for a paragraph of body text that no longer lives
-    there, and scaling it down verbatim leaves too little width for the
-    one-word header label, wrapping it letter by letter."""
-    table = gframe.table
-    acc = 0
-    n = len(table.columns)
-    for i, col in enumerate(table.columns):
-        new_w = width - acc if i == n - 1 else round(width * col_fractions[i])
-        col.width = Emu(new_w)
-        acc += new_w
-    # row split: a short header line, a tall score line, a thin spacer
-    row_fractions = [0.22, 0.56, 0.22]
-    acc = 0
-    for i, row in enumerate(table.rows):
-        new_h = height - acc if i == len(table.rows) - 1 else round(height * row_fractions[i])
-        row.height = Emu(new_h)
-        acc += new_h
-    gframe.left, gframe.top, gframe.width, gframe.height = Emu(left), Emu(top), Emu(width), Emu(height)
+def add_tile(slide, left, top, width, height, label, score_text, header_color):
+    """One score tile: a colored header band (label, white bold) over a
+    light body band (the big score, in onyx). No empty cells, no scale
+    markers — just the two pieces of data a reader needs."""
+    header_h = round(height * 0.38)
+    body_h = height - header_h
 
+    header = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Emu(left), Emu(top), Emu(width), Emu(header_h))
+    header.fill.solid()
+    header.fill.fore_color.rgb = header_color
+    header.line.fill.background()
+    header.shadow.inherit = False
+    set_text(header.text_frame, label, 11, WHITE)
 
-def clone_lens_tile(slide, source_gframe):
-    """Deep-copy a lens table's shape for the Total tile, stripped of its
-    placeholder binding (two shapes cannot share one layout placeholder)."""
-    new_el = copy.deepcopy(source_gframe._element)
-    ph = new_el.find('.//{http://schemas.openxmlformats.org/presentationml/2006/main}ph')
-    if ph is not None:
-        ph.getparent().remove(ph)
-    slide.shapes._spTree.append(new_el)
-    return GraphicFrame(new_el, slide.shapes)
+    body = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Emu(left), Emu(top + header_h), Emu(width), Emu(body_h))
+    body.fill.solid()
+    body.fill.fore_color.rgb = TILE_BODY_BG
+    body.line.fill.background()
+    body.shadow.inherit = False
+    set_text(body.text_frame, score_text, 22, ONYX)
+
+    return header, body
 
 
 def add_textbox(slide, left, top, width, height, text, size, color, bold=False, italic=False):
@@ -199,82 +197,73 @@ def build(fields, out_path, master_path=None):
     run.text = f"{fields['title_name']} \u2014 {fields['disposition']}"
     run.font.name = FONT
 
-    lens_tables = {}
-    for sh in list(slide.shapes):
-        if sh.has_table:
-            header = sh.table.cell(0, 0).text.strip()
-            if header in LENS_ORDER:
-                lens_tables[header] = sh
+    drop_lens_tables(slide)
 
-    missing = [k for k in LENS_ORDER if k not in lens_tables]
-    if missing:
-        raise RuntimeError(f"Business Lens slide is missing table(s) for {missing}")
-
-    # lay out a row of 5 tiles (Cost, Risk, Time, Benefit, Total) below "who"
     margin = title_ph.left
-    gap = Emu(150000)
-    tile_w = (slide_w - 2 * margin - 4 * gap) // 5
-    tile_h = Emu(1150000)
-    tiles_top = Emu(3250000)
-    # label | spacer | legend; label gets enough width that one word (e.g.
-    # "Benefit") never wraps letter by letter
-    COL_FRACTIONS = [0.42, 0.40, 0.18]
-
-    def clear_lens_body(table):
-        """Clear every 'Lorem ipsum' / 'More ipsum' placeholder cell. The
-        '-- / ++' scale legend in column 2 is a fixed template element, not
-        data, and is left as the master ships it."""
-        for cell in (table.cell(1, 1), table.cell(2, 0), table.cell(2, 1)):
-            set_run_text(cell, 0, '', size_pt=8)
-
+    content_w = slide_w - 2 * margin
     t = fields['triage']
     scores = {'Cost': t['cost'], 'Risk': t['risk'], 'Time': t['time'], 'Benefit': t['benefit']}
 
+    def heading(text, top):
+        box = add_textbox(slide, margin, top, content_w, 260000, text, 12, ORANGE_SMALL, bold=True)
+        return 260000
+
+    def body(text, top, height):
+        add_textbox(slide, margin, top, content_w, height, text, 14, SLATE)
+        return height
+
+    cursor = title_ph.top + title_ph.height + GAP
+
+    # --- Ask ---
+    cursor += heading('THE ASK', cursor) + 60000
+    cursor += body(fields['ask'], cursor, 560000) + GAP
+
+    # --- Who and how often ---
+    cursor += heading('WHO AND HOW OFTEN', cursor) + 60000
+    cursor += body(fields['who_how_often'], cursor, 400000) + GAP
+
+    # --- Triage: five tiles, then fit / decision date / note below them,
+    # in their own block with clear spacing (never on top of the tiles) ---
+    cursor += heading('TRIAGE', cursor) + 60000
+    tile_gap = 150000
+    tile_w = (content_w - 4 * tile_gap) // 5
+    tile_h = 1050000
     x = margin
     for name in LENS_ORDER:
-        gframe = lens_tables[name]
-        table = gframe.table
         score = scores[name]
-        set_run_text(table.cell(0, 0), 0, name, size_pt=10, bold=True)
-        set_run_text(table.cell(1, 0), 1, f"{score:+d}" if score else '0', size_pt=16, bold=True)
-        clear_lens_body(table)
-        rescale_table(gframe, x, tiles_top, tile_w, tile_h, COL_FRACTIONS)
-        x += tile_w + gap
+        add_tile(slide, x, cursor, tile_w, tile_h, name, f"{score:+d}" if score else '0', ONYX)
+        x += tile_w + tile_gap
+    add_tile(slide, x, cursor, tile_w, tile_h, 'Total', f"{t['total']:+d}" if t['total'] else '0', ORANGE)
+    cursor += tile_h + GAP
 
-    total_gframe = clone_lens_tile(slide, lens_tables['Cost'])
-    total_table = total_gframe.table
-    set_run_text(total_table.cell(0, 0), 0, 'Total', size_pt=10, bold=True)
-    set_run_text(total_table.cell(0, 2), 0, '', size_pt=8)  # Total has no -- / ++ scale
-    set_run_text(total_table.cell(1, 0), 1, f"{t['total']:+d}" if t['total'] else '0', size_pt=16, bold=True)
-    set_run_text(total_table.cell(1, 2), 1, '', size_pt=8)
-    set_run_text(total_table.cell(2, 2), 2, '', size_pt=8)
-    clear_lens_body(total_table)
-    rescale_table(total_gframe, x, tiles_top, tile_w, tile_h, COL_FRACTIONS)
-
-    def heading(text, top):
-        return add_textbox(slide, margin, top, Emu(6500000), Emu(270000), text, 12, ORANGE_SMALL, bold=True)
-
-    def body(text, top, height=900000, width=None):
-        return add_textbox(slide, margin, top, Emu(width or slide_w - 2 * margin), Emu(height), text, 14, SLATE)
-
-    ask_top = 950000
-    heading('THE ASK', ask_top)
-    body(fields['ask'], ask_top + 280000, height=620000)
-
-    who_top = ask_top + 1000000
-    heading('WHO AND HOW OFTEN', who_top)
-    body(fields['who_how_often'], who_top + 280000, height=400000)
-
-    heading('TRIAGE', tiles_top - 350000)
-    caption_top = tiles_top + int(tile_h) + 250000
     caption = f"Fit: {t['fit']}  |  Decision date: {t['decision_date']}"
-    body(caption, caption_top, height=250000)
+    cursor += body(caption, cursor, 230000)
     if t.get('note'):
-        body(t['note'], caption_top + 260000, height=350000)
+        cursor += body(t['note'], cursor, 280000)
+    cursor += GAP
 
-    context_top = caption_top + 700000
-    heading('CONTEXT', context_top)
-    bullets_box = slide.shapes.add_textbox(Emu(margin), Emu(context_top + 280000), Emu(slide_w - 2 * margin), Emu(900000))
+    # footer note position: beside the layout's own "Confidential and
+    # Proprietary" footer shape, same row, never overlapping it. On this
+    # master that shape is named "Footer Placeholder" but is not an actual
+    # <p:ph> placeholder, so it must be found via .shapes, not .placeholders.
+    layout_footer = next(
+        (sh for sh in slide.slide_layout.shapes if 'footer' in sh.name.lower() and sh.has_text_frame), None
+    )
+    if layout_footer is not None:
+        footer_left = layout_footer.left + layout_footer.width + Emu(300000)
+        footer_top = layout_footer.top
+        # the master's own footer shape overshoots the slide by a few EMU;
+        # clamp ours so it stays fully on-slide regardless
+        footer_height = min(layout_footer.height, slide_h - footer_top)
+    else:
+        footer_left, footer_top, footer_height = margin, slide_h - Emu(400000), Emu(300000)
+
+    # --- Context --- (bullets box stops a clear gap above the footer row,
+    # so it can never overlap the footer note or "Confidential and
+    # Proprietary", however many bullets or how much text is in them)
+    cursor += heading('CONTEXT', cursor) + 60000
+    bullets_h = max(400000, int(footer_top) - int(cursor) - GAP)
+    bullets_box = slide.shapes.add_textbox(Emu(margin), Emu(cursor), Emu(content_w), Emu(bullets_h))
     btf = bullets_box.text_frame
     btf.word_wrap = True
     for i, b in enumerate(fields['context_bullets']):
@@ -285,21 +274,9 @@ def build(fields, out_path, master_path=None):
         run.font.size = Pt(13)
         run.font.color.rgb = SLATE
 
-    # footer note: beside the layout's own "Confidential and Proprietary"
-    # footer shape, same row, never overlapping it. On this master that
-    # shape is named "Footer Placeholder" but is not an actual <p:ph>
-    # placeholder, so it must be found via .shapes, not .placeholders.
-    layout_footer = next(
-        (sh for sh in slide.slide_layout.shapes if 'footer' in sh.name.lower() and sh.has_text_frame), None
-    )
-    if layout_footer is not None:
-        footer_left = layout_footer.left + layout_footer.width + Emu(300000)
-        footer_top = layout_footer.top
-        footer_height = layout_footer.height
-    else:
-        footer_left, footer_top, footer_height = margin, slide_h - Emu(400000), Emu(300000)
+    footer_width = slide_w - margin - footer_left
     footer = f"Source: {fields['footer_source']}    {fields['footer_date']}"
-    add_textbox(slide, footer_left, footer_top, slide_w - margin - footer_left, footer_height, footer, 10, SLATE, italic=True)
+    add_textbox(slide, footer_left, footer_top, footer_width, footer_height, footer, 10, SLATE, italic=True)
 
     # speaker notes: sources with title, link, date; unverified claims marked
     notes = slide.notes_slide
