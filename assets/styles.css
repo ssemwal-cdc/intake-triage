@@ -2,8 +2,12 @@
     --onyx:#141E27; --slate:#34444D; --muted:#5E6B73; --line:#D5DADD;
     --wash:#F3F4F5; --orange:#F37820; --orange-ink:#B3530C; --white:#FFFFFF;
     --err:#B42318;
+    /* one cursor for everything selectable: Compass-orange arrow, onyx outline; falls back to the hand */
+    --pick:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M3 2v17l4.6-4.2 3.3 7.2 3-1.4-3.3-7.1H17z' fill='%23F37820' stroke='%23141E27' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E") 3 2, pointer;
   }
   *{box-sizing:border-box}
+  :is(button,select,a[href],input[type=checkbox],input[type=radio],label.check,.radios label,.tile){cursor:var(--pick)}
+  :is(button,select,input):disabled{cursor:not-allowed}
   html{-webkit-text-size-adjust:100%}
   body{margin:0;background:var(--white);color:var(--onyx);
        font-family:Arial,"Helvetica Neue",Helvetica,sans-serif;font-size:16px;line-height:1.5}
@@ -13,7 +17,7 @@
   header.top img{height:60px;width:auto;display:block}
   .viewswitch{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
   .viewswitch button{font:inherit;font-size:14px;padding:8px 14px;border:0;background:var(--white);
-       color:var(--slate);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:1}
+       color:var(--slate);cursor:var(--pick);display:inline-flex;align-items:center;justify-content:center;line-height:1}
   .viewswitch button[aria-pressed="true"]{background:var(--onyx);color:var(--white)}
   h1{font-size:34px;line-height:1.15;margin:28px 0 10px;font-weight:700;letter-spacing:-.01em}
   .lede{font-size:17px;color:var(--slate);margin:0 0 20px;max-width:62ch}
@@ -42,14 +46,14 @@
   .check input{margin-top:4px;accent-color:var(--orange)}
   .radios{display:flex;flex-wrap:wrap;gap:8px}
   .radios label{position:relative;display:inline-flex;align-items:center;justify-content:center;border:1px solid #AEB6BB;border-radius:4px;
-       padding:8px 14px;font-size:15px;line-height:1;cursor:pointer}
+       padding:8px 14px;font-size:15px;line-height:1;cursor:var(--pick)}
   .radios input{position:absolute;opacity:0;pointer-events:none}
   .radios label:has(input:checked){border-color:var(--onyx);background:var(--wash)}
 
   /* the one bold element: the gap selector */
   .tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .tile{position:relative;display:block;border:1.5px solid var(--line);border-radius:6px;
-        padding:18px 18px 16px;cursor:pointer;background:var(--white);min-height:128px}
+        padding:18px 18px 16px;cursor:var(--pick);background:var(--white);min-height:128px}
   .tile input{position:absolute;opacity:0;pointer-events:none}
   .tile .t{display:block;font-size:19px;font-weight:700;line-height:1.25;margin-bottom:6px}
   .tile .d{display:block;font-size:14.5px;color:var(--muted)}
@@ -57,7 +61,7 @@
   .tile:has(input:checked){border-color:var(--orange);box-shadow:inset 0 -4px 0 var(--orange)}
   .tile:has(input:checked) .t{color:var(--onyx)}
   .nofit{margin-top:10px;font-size:14.5px}
-  .nofit label{display:inline-flex;gap:8px;align-items:center;color:var(--muted);cursor:pointer}
+  .nofit label{display:inline-flex;gap:8px;align-items:center;color:var(--muted);cursor:var(--pick)}
 
   .culture{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 20px;
            border:1px solid var(--line);border-radius:4px;padding:14px 16px 10px}
@@ -68,7 +72,7 @@
 
   .actions{margin:40px 0 0 1.95em;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
   .btn{font:inherit;font-weight:700;font-size:16px;padding:12px 22px;border-radius:4px;
-       border:0;background:var(--onyx);color:var(--white);cursor:pointer;
+       border:0;background:var(--onyx);color:var(--white);cursor:var(--pick);
        display:inline-flex;align-items:center;justify-content:center;line-height:1}
   .btn:hover{background:var(--slate)}
   .btn.quiet{background:var(--white);color:var(--onyx);border:1px solid #AEB6BB}
@@ -94,12 +98,12 @@
   .reqTableWrap{margin:0 0 20px 1.95em;overflow-x:auto;border:1px solid var(--line);border-radius:6px}
   table.reqTable{border-collapse:collapse;width:100%;min-width:760px;font-size:14px}
   .reqTable th,.reqTable td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
-  .reqTable thead th{background:var(--wash);font-weight:700;cursor:pointer;user-select:none}
+  .reqTable thead th{background:var(--wash);font-weight:700;cursor:var(--pick);user-select:none}
   .reqTable thead th:focus-visible{outline:3px solid rgba(243,120,32,.45);outline-offset:-3px}
   .reqTable th[aria-sort="ascending"]::after{content:" \2191"}
   .reqTable th[aria-sort="descending"]::after{content:" \2193"}
   .reqTable th[data-type="num"],.reqTable td.num{text-align:right;font-variant-numeric:tabular-nums}
-  .reqTable tbody tr{cursor:pointer}
+  .reqTable tbody tr{cursor:var(--pick)}
   .reqTable tbody tr:hover{background:var(--wash)}
   .reqTable tbody tr[aria-current="true"]{background:var(--wash);outline:2px solid var(--onyx);outline-offset:-2px}
   .reqTable tbody tr:focus-visible{outline:3px solid rgba(243,120,32,.45);outline-offset:-3px}
@@ -116,7 +120,7 @@
   .scale input{position:absolute;opacity:0}
   .scale span{display:inline-flex;align-items:center;justify-content:center;min-width:44px;
        text-align:center;padding:7px 6px;font-size:14px;line-height:1;
-       border-right:1px solid var(--line);cursor:pointer}
+       border-right:1px solid var(--line);cursor:var(--pick)}
   .scale label:last-child span{border-right:0}
   .scale input:checked+span{background:var(--onyx);color:var(--white)}
   .scale input:focus-visible+span{outline:3px solid rgba(243,120,32,.45);outline-offset:-3px}

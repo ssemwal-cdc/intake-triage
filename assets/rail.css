@@ -22,7 +22,7 @@
 
 #progressRail .rail-step{
   display:flex;align-items:center;gap:10px;width:100%;text-align:left;
-  border:0;background:transparent;color:#fff;cursor:pointer;
+  border:0;background:transparent;color:#fff;cursor:var(--pick);
   font:inherit;font-size:13.5px;padding:10px 16px;line-height:1.25;
 }
 #progressRail .rail-step .rail-num{
@@ -78,7 +78,7 @@
   #progressRail .rail-progress{border-bottom:0;padding:8px 14px 6px}
   #progressRail .rail-dots{display:flex;justify-content:center;gap:10px;padding:0 14px 10px}
   #progressRail .rail-dot-btn{
-    border:0;background:transparent;padding:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    border:0;background:transparent;padding:6px;cursor:var(--pick);display:flex;align-items:center;justify-content:center;
   }
   #progressRail .rail-dot-btn:focus-visible{outline:2px solid var(--rail-orange);outline-offset:1px;border-radius:50%}
   #progressRail .rail-dot{
