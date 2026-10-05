@@ -66,7 +66,7 @@ form field, not anything read from their Claude profile.
 ## Check
 
 `artifact/test-harness.mjs` (Playwright, run the same way as
-`scripts/e2e.mjs`, from outside the repo's own dependency tree). It serves
+`scripts/e2e.test.mjs`, from outside the repo's own dependency tree). It serves
 `intake-artifact.html` wrapped in a minimal document skeleton. It injects a
 fake `window.claude.use`. That fake implements the `db`/`user` subset the
 page calls, and it enforces the rules above. A requester's fake db reads
