@@ -1,6 +1,6 @@
 # One-slide management summary of a request
 
-Status: ruled 2026-10-05 by the owner: build the skill and the button, after the triage UX review lands.
+Status: ruled 2026-10-05 by the owner: build the skill and the button. Skill and button built (8928ee9); template rebuild on the official master in progress.
 
 - Build as a Claude skill `request-slide`, not in triage.html. A static page has no Microsoft sign-in for SharePoint or Teams and no safe place for a model key.
 - Input: a submission file name. The skill reads it from `intake-submissions` with `gh`, and stops if triage is empty.
@@ -9,3 +9,6 @@ Status: ruled 2026-10-05 by the owner: build the skill and the button, after the
 - Output: a .pptx in a local folder the owner names. Nothing is uploaded.
 - triage.html gets one "Copy slide prompt" button that copies the request's file name in a ready prompt.
 - The skill ships one fixed slide template, so every slide looks the same: Compass design language (onyx #141E27, slate #34444D, orange #F37820, #B3530C for small orange text, Arial, the Compass logo from assets/compass-logo.png). The template's layout and type sizes never vary per request; only the text fills change.
+- Ruled 2026-10-05: build each slide inside the official Compass master `Template_Powerpoint_Master_V2.1_03-27-25.pptx` (Marketing, "Compass PPT Template 2.0"), white content layout (master rule: white for internal or detail-heavy decks), its footer "Confidential and Proprietary", and its Business Lens slide for the four scores.
+- Colours: the owner's brief (onyx #141E27, slate #34444D, orange #F37820, #B3530C small orange text), not the 2024 guideline values.
+- The master is confidential and this repo is public: never commit it. The skill reads it from a local path (default the owner's OneDrive copy), configurable in the skill.

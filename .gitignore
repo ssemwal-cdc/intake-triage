@@ -1,3 +1,7 @@
 *.bak
 .claude/worktrees/
 .claude/settings.local.json
+
+# Compass master template is confidential; never commit it
+skills/request-slide/**/*master*.pptx
+skills/request-slide/**/Template_Powerpoint_Master*.pptx
