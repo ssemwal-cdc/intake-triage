@@ -113,6 +113,7 @@
       var behavior = reduced.matches ? 'auto' : 'smooth';
       step.scrollIntoView({ behavior: behavior, block: 'start' });
       h2.focus({ preventScroll: true });
+      updateCurrent();
     }
     btn.addEventListener('click', go);
     dot.addEventListener('click', go);
@@ -220,23 +221,19 @@
       }
     });
   }
-  // A plain 'scroll' listener covers user-driven scrolling (wheel, trackpad,
-  // keyboard), but the browser fires that event on its own render-frame
-  // schedule, a frame or more after a programmatic jump. Wrapping the two ways
-  // script moves the page (scrollTo/scrollBy, and our own step buttons'
-  // scrollIntoView) updates aria-current in the same call, so a caller that
-  // scrolls and immediately reads the rail sees it already in sync.
-  window.addEventListener('scroll', updateCurrent, { passive: true });
-  window.addEventListener('resize', updateCurrent);
-  ['scrollTo', 'scrollBy'].forEach(function(name){
-    var native = window[name].bind(window);
-    window[name] = function(){ native.apply(window, arguments); updateCurrent(); };
-  });
-  var nativeScrollIntoView = Element.prototype.scrollIntoView;
-  Element.prototype.scrollIntoView = function(){
-    nativeScrollIntoView.apply(this, arguments);
-    updateCurrent();
-  };
+  // A passive 'scroll' listener, rAF-throttled so it runs at most once per
+  // frame, covers all scrolling (wheel, trackpad, keyboard, programmatic).
+  // The rail's own step buttons (go(), above) also call updateCurrent()
+  // directly after they scroll, so clicking one updates the rail without
+  // waiting on that next frame.
+  var spyRafPending = false;
+  function scheduleSpyUpdate(){
+    if(spyRafPending) return;
+    spyRafPending = true;
+    requestAnimationFrame(function(){ spyRafPending = false; updateCurrent(); });
+  }
+  window.addEventListener('scroll', scheduleSpyUpdate, { passive: true });
+  window.addEventListener('resize', scheduleSpyUpdate);
   updateCurrent();
 
   // ---- hide after submit, show + reset on "Start another request" ----
