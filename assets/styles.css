@@ -98,14 +98,23 @@
   .reqSearch input{width:100%}
   .reqCount{margin:0 0 10px 1.95em;color:var(--muted);font-size:13.5px}
   .reqTableWrap{margin:0 0 20px 1.95em;overflow-x:auto;border:1px solid var(--line);border-radius:6px}
-  table.reqTable{border-collapse:collapse;width:100%;font-size:14px}
-  .reqTable th,.reqTable td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
-  .reqTable th:first-child,.reqTable td:first-child{white-space:normal}
+  table.reqTable{border-collapse:collapse;width:100%;table-layout:fixed;font-size:14px}
+  .reqTable th,.reqTable td{padding:6px 7px;text-align:left;border-bottom:1px solid var(--line);
+       white-space:normal;overflow-wrap:break-word;word-break:break-word}
   .reqTable thead th{background:var(--wash);font-weight:700;cursor:var(--pick);user-select:none}
   .reqTable thead th:focus-visible{outline:3px solid rgba(243,120,32,.45);outline-offset:-3px}
   .reqTable th[aria-sort="ascending"]::after{content:" \2191"}
   .reqTable th[aria-sort="descending"]::after{content:" \2193"}
-  .reqTable th[data-type="num"],.reqTable td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .reqTable th[data-type="num"],.reqTable td.num{text-align:center;font-variant-numeric:tabular-nums;
+       white-space:nowrap;padding-left:3px;padding-right:3px}
+  .reqTable th[data-col="short"]{width:24%}
+  .reqTable th[data-col="function"]{width:11%}
+  .reqTable th[data-col="requester"]{width:11%}
+  .reqTable th[data-col="submitted"]{width:10%}
+  .reqTable th[data-col="status"]{width:10%}
+  .reqTable th[data-col="cost"],.reqTable th[data-col="risk"],
+  .reqTable th[data-col="time"],.reqTable th[data-col="benefit"],
+  .reqTable th[data-col="total"]{width:6.8%}
   .reqTable tbody tr{cursor:var(--pick)}
   .reqTable tbody tr:hover{background:var(--wash)}
   .reqTable tbody tr[aria-current="true"]{background:var(--wash);outline:2px solid var(--onyx);outline-offset:-2px}
@@ -150,6 +159,9 @@
     .reqTable th:nth-child(7),.reqTable td:nth-child(7),
     .reqTable th:nth-child(8),.reqTable td:nth-child(8),
     .reqTable th:nth-child(9),.reqTable td:nth-child(9){display:none}
+    .reqTable th[data-col="short"]{width:55%}
+    .reqTable th[data-col="status"]{width:25%}
+    .reqTable th[data-col="total"]{width:20%}
     .reqCount,.reqTableWrap{margin-left:0}
     header.top{flex-direction:column;align-items:flex-start}
     .sample dl{grid-template-columns:1fr}
