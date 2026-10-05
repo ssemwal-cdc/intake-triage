@@ -16,6 +16,8 @@
     return d.innerHTML;
   }
   function headingText(h2){
+    var override = h2.getAttribute('data-rail');
+    if(override) return override;
     var clone = h2.cloneNode(true);
     var n = clone.querySelector('.n');
     if(n) n.remove();
@@ -68,14 +70,22 @@
   var dotsList = document.createElement('div');
   dotsList.className = 'rail-dots';
 
-  // Vertical timeline (>=641px only; CSS hides it on the mobile top bar). Sits
-  // behind the numbered step dots, so it's built before the step buttons below.
+  // Vertical timeline (>=641px only; CSS hides it on the mobile top bar). A base
+  // slate line plus one orange segment per completed step, each positioned to run
+  // dot-center to dot-center so the opaque dots paint on top and the line never
+  // shows through. Built before the step buttons below, so segments paint first.
   var trackV = document.createElement('div');
   trackV.className = 'rail-track-v';
-  var fillV = document.createElement('div');
-  fillV.className = 'rail-fill-v';
   stepsList.appendChild(trackV);
-  stepsList.appendChild(fillV);
+  // One segment per gap between dots, all appended before any step button so
+  // buttons (and their opaque dots) always paint on top of the line.
+  var segEls = [];
+  for(var si = 0; si < steps.length - 1; si++){
+    var seg = document.createElement('div');
+    seg.className = 'rail-seg';
+    stepsList.appendChild(seg);
+    segEls.push(seg);
+  }
 
   var entries = []; // { step, h2, btn, dot }
 
@@ -89,9 +99,8 @@
     btn.className = 'rail-step';
     btn.setAttribute('data-state', 'none');
     btn.innerHTML =
-      '<span class="rail-num">' + (i + 1) + '</span>' +
-      '<span class="rail-label">' + escapeHtml(label) + '</span>' +
-      '<span class="rail-check">&#10003;</span>';
+      '<span class="rail-num"><span class="rail-num-n">' + (i + 1) + '</span></span>' +
+      '<span class="rail-label">' + escapeHtml(label) + '</span>';
 
     var dot = document.createElement('button');
     dot.type = 'button';
@@ -123,12 +132,20 @@
   var railStatus = document.getElementById('railStatus');
   var railTrack = rail.querySelector('.rail-track');
 
-  var lastPercent = 0;
-  function paintFillV(){
-    // top-down fill: height is a px slice of the track's own rendered length,
-    // so it lines up with the step dots regardless of label wrapping.
-    var trackLen = trackV.offsetHeight;
-    fillV.style.height = trackLen ? Math.round(trackLen * (lastPercent / 100)) + 'px' : '0px';
+  // Segment k (between dot k and dot k+1) is positioned dot-center to dot-center,
+  // from the dots' own rendered position, so it holds regardless of label wrapping.
+  function paintSegments(){
+    var railRect = stepsList.getBoundingClientRect();
+    for(var i = 0; i < segEls.length; i++){
+      var numA = entries[i].btn.querySelector('.rail-num');
+      var numB = entries[i + 1].btn.querySelector('.rail-num');
+      var a = numA.getBoundingClientRect();
+      var b = numB.getBoundingClientRect();
+      var top = (a.top + a.height / 2) - railRect.top;
+      var bottom = (b.top + b.height / 2) - railRect.top;
+      segEls[i].style.top = top + 'px';
+      segEls[i].style.height = Math.max(0, bottom - top) + 'px';
+    }
   }
 
   function recompute(){
@@ -137,26 +154,32 @@
     if(gapSection && gapPicked()) filled++;
     var remaining = TOTAL_REQUIRED - filled;
     var percent = TOTAL_REQUIRED ? Math.round((filled / TOTAL_REQUIRED) * 100) : 100;
-    lastPercent = percent;
 
     railFill.style.width = percent + '%';
     railPercent.textContent = percent + '%';
     railStatus.textContent = remaining > 0 ? (remaining + ' required left') : 'Ready to submit';
     railTrack.setAttribute('aria-valuenow', String(percent));
-    paintFillV();
 
+    // Two states only: complete, or not. "Current" (in view, not complete) is
+    // layered on top by the scroll-spy's is-current class, in CSS.
     entries.forEach(function(entry){
       var reqIds = reqBySection.get(entry.step) || [];
-      var state;
+      var done;
       if(reqIds.length){
         var have = reqIds.filter(function(id){ return id === '__gap' ? gapPicked() : fieldFilled(id); }).length;
-        state = have === 0 ? 'none' : (have === reqIds.length ? 'done' : 'partial');
+        done = have === reqIds.length;
       } else {
-        state = sectionHasAnyAnswer(entry.step) ? 'done' : 'none';
+        done = sectionHasAnyAnswer(entry.step);
       }
+      var state = done ? 'done' : 'none';
       entry.btn.setAttribute('data-state', state);
       entry.dot.setAttribute('data-state', state);
     });
+
+    entries.forEach(function(entry, i){
+      if(i < segEls.length) segEls[i].setAttribute('data-state', entry.btn.getAttribute('data-state'));
+    });
+    paintSegments();
   }
 
   form.addEventListener('input', recompute);
@@ -200,10 +223,10 @@
     });
   }
 
-  // Track length changes with viewport width and label wrapping; repaint the
-  // vertical fill to match without recomputing the whole form's state.
-  window.addEventListener('resize', paintFillV);
-  if(window.ResizeObserver) new ResizeObserver(paintFillV).observe(trackV);
+  // Dot positions shift with viewport width and label wrapping (including the
+  // is-current label going bold); repaint segments without recomputing state.
+  window.addEventListener('resize', paintSegments);
+  if(window.ResizeObserver) new ResizeObserver(paintSegments).observe(stepsList);
 
   recompute();
 })();
