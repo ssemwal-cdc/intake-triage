@@ -650,20 +650,29 @@ async function run(){
       // representation only: the rail keeps a mirrored, display:none dot/step list in
       // sync for the other breakpoint, and that hidden twin also carries the attribute).
       const visibleCurrentSel = width <= 640 ? '#progressRail .rail-dot-btn[aria-current="step"]' : '#progressRail .rail-step[aria-current="step"]';
+      function waitForCurrentLabel(matchText){
+        return page.waitForFunction(({ sel, text }) => {
+          const el = document.querySelector(sel);
+          const label = el ? (el.textContent || el.getAttribute('aria-label') || '') : '';
+          return label.indexOf(text) !== -1;
+        }, { sel: visibleCurrentSel, text: matchText }, { timeout: 2000 }).catch(() => {});
+      }
+
       await page.evaluate(() => document.getElementById('s1').scrollIntoView());
-      await page.waitForFunction((sel) => document.querySelectorAll(sel).length === 1, visibleCurrentSel, { timeout: 3000 }).catch(() => {});
+      await waitForCurrentLabel('About');
       const currentCount = await page.locator(visibleCurrentSel).count();
       ok('scroll-spy marks exactly one step as aria-current', currentCount === 1);
       ok('scroll-spy current step is step 1 after scrolling to section 1',
         await page.locator(visibleCurrentSel).first().evaluate((el) => /About/.test(el.textContent || el.getAttribute('aria-label') || '')));
 
       // scrolling section 3 ("Where") to the top of the viewport should mark it
-      // current. Known bug: step 4 is marked instead.
+      // current. Known bug: step 4 is marked instead, so this wait times out and
+      // the assertion below reads the (wrong) settled state.
       await page.evaluate(() => {
         const el = document.getElementById('s3');
         window.scrollTo(0, el.offsetTop - 20);
       });
-      await page.waitForFunction((sel) => document.querySelectorAll(sel).length === 1, visibleCurrentSel, { timeout: 3000 }).catch(() => {});
+      await waitForCurrentLabel('Where');
       const s3Label = width <= 640
         ? await page.locator(visibleCurrentSel).first().getAttribute('aria-label')
         : await page.locator(`${visibleCurrentSel} .rail-label`).first().innerText();
