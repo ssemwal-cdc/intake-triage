@@ -151,7 +151,7 @@ async function run(){
 
       // owner copy edit (2026-09-30 ruling)
       ok('missHelp shows the owner-approved copy',
-        (await page.locator('#missHelp').innerText()) === 'Tell us the problem as you see it. A rough cost helps, if you know it.');
+        (await page.locator('#missHelp').innerText()) === 'Tell us the problem as you see it, and roughly what it costs in dollars or time.');
       ok('notes text matches exactly',
         (await page.locator('.notes p').innerText()) === 'Please describe sensitive data rather than pasting verbatim.');
 
