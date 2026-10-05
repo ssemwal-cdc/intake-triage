@@ -80,16 +80,54 @@ text changes. Governing ruling: `docs/decisions/request-slide.md` in
 - `gh` CLI, authenticated for `ssemwal-cdc/intake-submissions`.
 - The Microsoft 365 connector (`sharepoint_search`, `chat_message_search`,
   `read_resource`), for context searches.
+- The official Compass master, `Template_Powerpoint_Master_V2.1_03-27-25.pptx`
+  ("Compass PPT Template 2.0" from Marketing). The builder reads it
+  read-only, local, and never commits it. See "The master" below.
+
+## The master
+
+The builder opens the owner's local copy of the confidential Compass
+master. It finds the master's "Business Lens - White" slide. It trims the
+deck down to that one slide. It never writes to the master file. It never
+commits the master, or anything built from it.
+
+Master path, in order:
+
+1. `--master <path>` on the command line.
+2. The `INTAKE_SLIDE_MASTER` environment variable.
+3. The default: the owner's OneDrive copy, at
+   `C:\Users\ShivamSemwal\OneDrive - Compass Datacenters, LLC\Downloads 16 Pro\Template_Powerpoint_Master_V2.1_03-27-25.pptx`.
+
+`.gitignore` blocks any `*master*.pptx` or `Template_Powerpoint_Master*.pptx`
+under `skills/request-slide/`. The master itself, and any slide built from
+it, can never land in this repo. Only `examples/sample.json` is committed
+(the fields, not a slide). A sample render goes to a scratch folder, never
+to `examples/`.
 
 ## Template
 
-`template/build_slide.py` is the only thing that writes the .pptx. It is
-fixed: 16:9, white background, onyx (#141E27) title band, orange (#F37820)
-accent rule, #B3530C small orange headings, slate (#34444D) body text, and
-Arial throughout. The Compass logo (`assets/compass-logo.png`) sits top
-right. Section order: title (name and disposition), the ask, who and how
-often, triage, context (numbered bullets), and footer (source file name and
-date). Speaker notes list each numbered source with title, link, and date.
-They mark unverified claims. See `examples/sample.json` and
-`examples/sample.pptx` for a worked example. That example uses sample data
-only, with no live SharePoint or Teams content.
+`template/build_slide.py` is the only thing that writes the .pptx. It opens
+the master read-only. It keeps only the master's "Business Lens - White"
+slide. White is the master's own rule for an internal, detail-heavy deck.
+It drops the other 139 slides from the output.
+
+It reuses that slide's own title, footer ("Confidential and Proprietary"),
+tagline, and logo, exactly as the layout provides them. It reuses the
+slide's four Cost/Risk/Time/Benefit tables as the score tiles, resized into
+one row. A fifth tile, for Total, is cloned from the same table shape. The
+master has no Total tile of its own.
+
+Colors, where the master leaves the choice: onyx (#141E27), slate
+(#34444D), orange (#F37820), and #B3530C for small orange text. Arial
+throughout.
+
+Section order: title (name and disposition), the ask, who and how often,
+triage (the five tiles, then fit, decision date, and note), context
+(numbered bullets), and a footer note. The footer note gives the source
+file name and date. It sits beside the master's own "Confidential and
+Proprietary" line.
+
+Speaker notes list each numbered source, with title, link, and date. They
+mark unverified claims. See `examples/sample.json` for a worked example
+(sample data only, no live SharePoint or Teams content). Build it yourself
+to see the rendered slide. The output itself is never committed.
