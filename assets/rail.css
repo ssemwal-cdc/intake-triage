@@ -25,17 +25,26 @@
   border:0;background:transparent;color:#fff;cursor:var(--pick);
   font:inherit;font-size:13.5px;padding:10px 16px;line-height:1.25;
 }
+/* Opaque dot, always, so the vertical line behind it never shows through.
+   Not-started is the default look; done and current (below) override it. */
 #progressRail .rail-step .rail-num{
-  flex:0 0 auto;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  font-size:11px;font-weight:700;border:1.5px solid rgba(255,255,255,.55);color:#fff;
+  position:relative;flex:0 0 auto;width:20px;height:20px;border-radius:50%;display:flex;
+  align-items:center;justify-content:center;font-size:11px;font-weight:700;
+  border:1.5px solid var(--rail-slate);background:var(--rail-onyx);color:#8b979e;
 }
 #progressRail .rail-step .rail-label{flex:1 1 auto;color:#fff}
-#progressRail .rail-step .rail-check{flex:0 0 auto;width:16px;text-align:center;color:var(--rail-orange);opacity:0;font-weight:700}
-#progressRail .rail-step[data-state="done"] .rail-num{background:var(--rail-orange);border-color:var(--rail-orange);color:var(--rail-onyx)}
-#progressRail .rail-step[data-state="done"] .rail-check{opacity:1}
-#progressRail .rail-step[data-state="partial"] .rail-num{border-color:var(--rail-orange);color:var(--rail-orange)}
+#progressRail .rail-step[data-state="done"] .rail-num{
+  background:var(--rail-orange);border-color:var(--rail-orange);color:transparent;font-size:0;
+}
+#progressRail .rail-step[data-state="done"] .rail-num::after{
+  content:"\2713";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:11px;color:#fff;
+}
+#progressRail .rail-step.is-current:not([data-state="done"]) .rail-num{
+  background:#fff;border-color:var(--rail-orange);border-width:2px;color:var(--rail-onyx);
+}
 #progressRail .rail-step.is-current{background:rgba(255,255,255,.08)}
-#progressRail .rail-step.is-current .rail-label{color:var(--rail-orange)}
+#progressRail .rail-step.is-current .rail-label{color:#fff;font-weight:700}
 #progressRail .rail-step:hover{background:rgba(255,255,255,.06)}
 #progressRail .rail-step:focus-visible{outline:2px solid var(--rail-orange);outline-offset:-2px}
 
@@ -56,12 +65,17 @@
   #progressRail .rail-progress .rail-track{display:none}
 
   #progressRail .rail-steps{position:relative}
-  #progressRail .rail-track-v,
-  #progressRail .rail-fill-v{
+  #progressRail .rail-track-v{
     position:absolute;left:24px;top:20px;bottom:20px;width:3px;border-radius:999px;
+    background:rgba(255,255,255,.18);
   }
-  #progressRail .rail-track-v{background:rgba(255,255,255,.18)}
-  #progressRail .rail-fill-v{bottom:auto;height:0;background:var(--rail-orange);transition:height .25s ease}
+  /* One segment per gap between dots, dot-center to dot-center (positioned in JS).
+     Orange when the step above it is complete; otherwise transparent, so the
+     slate base track shows through. No percentage-length fill. */
+  #progressRail .rail-seg{
+    position:absolute;left:24px;width:3px;border-radius:999px;background:transparent;
+  }
+  #progressRail .rail-seg[data-state="done"]{background:var(--rail-orange)}
   #progressRail .rail-step{position:relative}
 }
 
@@ -85,11 +99,9 @@
     width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.35);border:1.5px solid rgba(255,255,255,.55);
   }
   #progressRail .rail-dot-btn[data-state="done"] .rail-dot{background:var(--rail-orange);border-color:var(--rail-orange)}
-  #progressRail .rail-dot-btn[data-state="partial"] .rail-dot{background:transparent;border-color:var(--rail-orange)}
   #progressRail .rail-dot-btn.is-current .rail-dot{box-shadow:0 0 0 3px rgba(243,120,32,.35)}
 }
 
 @media (prefers-reduced-motion:reduce){
-  #progressRail .rail-fill,
-  #progressRail .rail-fill-v{transition:none}
+  #progressRail .rail-fill{transition:none}
 }

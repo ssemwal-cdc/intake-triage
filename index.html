@@ -26,7 +26,7 @@
 
     <form id="f" novalidate>
       <section class="step" aria-labelledby="s1">
-        <h2 id="s1"><span class="n">1</span>About the Request</h2>
+        <h2 id="s1" data-rail="About"><span class="n">1</span>About the Request</h2>
         <div class="field row">
           <div><label class="q" for="name">Your name</label><input type="text" id="name" autocomplete="name" required></div>
           <div><label class="q" for="fn">Function</label>
@@ -39,7 +39,7 @@
       </section>
 
       <section class="step" aria-labelledby="s2">
-        <h2 id="s2"><span class="n">2</span>The Need</h2>
+        <h2 id="s2" data-rail="Ask"><span class="n">2</span>The Need</h2>
         <div class="field"><label class="q" for="miss">What goes wrong today, and why does it matter</label><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
           <span class="help" id="missHelp">Tell us the problem as you see it. A rough cost helps, if you know it.</span>
           <textarea id="miss" aria-describedby="missHelp" required></textarea></div>
@@ -80,7 +80,7 @@
       </section>
 
       <section class="step" aria-labelledby="s3">
-        <h2 id="s3"><span class="n">3</span>Where the Information Lives</h2>
+        <h2 id="s3" data-rail="Where"><span class="n">3</span>Where the Information Lives</h2>
         <p class="intro">Tick everything that applies. "In someone's head" is a real answer.</p>
         <div class="field checks" role="group" aria-labelledby="s3" id="srcs">
           <label class="check"><input type="checkbox" value="Email or Teams">Email or Teams</label>
@@ -98,7 +98,7 @@
       </section>
 
       <section class="step" aria-labelledby="s4">
-        <h2 id="s4"><span class="n">4</span>Which of These Is Closest</h2>
+        <h2 id="s4" data-rail="Which"><span class="n">4</span>Which of These Is Closest</h2>
         <p class="intro">Pick the one that best describes the problem today.</p>
         <div class="field">
           <div class="tiles" role="radiogroup" aria-labelledby="s4" id="gap">
