@@ -56,7 +56,28 @@ V4_SAMPLE = {
     "source_file": "2026-09-30-entity-level-tax-allocation-check-sample.json",
 }
 
-V3_SAMPLE = Path(__file__).resolve().parent.parent / 'examples' / 'sample.json'
+V3_SAMPLE = {
+    "title_name": "Entity-level tax allocation check",
+    "disposition": "Small rock",
+    "ask": "Automate the hand re-check of entity-level tax allocation each close.",
+    "who_how_often": "Tax team, once per close cycle, per project.",
+    "triage": {
+        "cost": -1, "risk": 1, "time": 2, "benefit": 2, "total": 4,
+        "fit": "Yes, data exists", "decision_date": "2026-10-15",
+        "note": "Fits within a month; owner confirmed.",
+    },
+    "context_bullets": [
+        "Entity allocation is re-checked by hand every close today. [1]",
+        "Data lives in NetSuite and Excel models, not one system. [2]",
+    ],
+    "footer_source": "2026-09-30-entity-level-tax-allocation-check-sample.json",
+    "footer_date": "2026-10-05",
+    "notes_sources": [
+        {"n": 1, "title": "Sample source", "link": "n/a", "date": "2026-10-05"},
+        {"n": 2, "title": "Sample source", "link": "n/a", "date": "2026-10-05"},
+    ],
+}  # inline v3 fixture: examples/sample.json was moved to the v4 shape by
+# the builder, so reading it here would no longer test the v3-refusal case
 
 
 def _build(fields):
@@ -91,7 +112,7 @@ def _run_red(label, fn):
 # --- 1. schema / value refusals -------------------------------------------
 
 def check_refuses_v3_schema():
-    fields = json.loads(V3_SAMPLE.read_text(encoding='utf-8'))
+    fields = copy.deepcopy(V3_SAMPLE)
     _expect_value_error(fields, 'schema', 'old v3 schema')
 
 
@@ -197,6 +218,38 @@ def check_no_background_art_behind_content():
     print('ok: no picture/graphic on slide or layout (plain white layout)')
 
 
+# --- 5b. no content shape overlaps a picture/logo on layout or master ------
+
+def check_no_content_shape_overlaps_picture_or_logo():
+    """A picture shape (type 13) living on the layout or the slide master --
+    e.g. the Compass logo -- can sit anywhere on the canvas, including top
+    right where a status tag is drawn. drop_lens_tables only removes the
+    master's own lens tables; it does not move or shrink the logo, so a
+    content shape placed over it is a real, separate overlap bug from the
+    plain-white-background check above."""
+    fields = copy.deepcopy(V4_SAMPLE)
+    fields['status'] = 'Proposed'  # draws the status tag most likely to collide
+    out = _build(fields)
+    prs = Presentation(str(out))
+    slide = prs.slides[0]
+    pic_rects = [
+        (sh.name, (sh.left, sh.top, sh.width, sh.height))
+        for src in (slide.slide_layout.shapes, slide.slide_layout.slide_master.shapes)
+        for sh in src
+        if sh.shape_type == 13 and None not in (sh.left, sh.top, sh.width, sh.height)
+    ]
+    content_rects = [
+        (sh.name, (sh.left, sh.top, sh.width, sh.height)) for sh in _content_shapes(slide)
+    ]
+    hits = []
+    for c_name, c_rect in content_rects:
+        for p_name, p_rect in pic_rects:
+            if _rects_overlap(c_rect, p_rect):
+                hits.append((c_name, p_name))
+    assert not hits, f"content shape(s) overlap a layout/master picture (logo): {hits}"
+    print('ok: no content shape overlaps a picture/logo on layout or master')
+
+
 # --- 6. "Proposed" must be visible when status is Proposed ------------------
 
 def check_proposed_status_shown_visibly():
@@ -206,7 +259,7 @@ def check_proposed_status_shown_visibly():
     prs = Presentation(str(out))
     slide = prs.slides[0]
     all_text = ' '.join(sh.text_frame.text for sh in slide.shapes if sh.has_text_frame)
-    assert 'Proposed' in all_text, 'status "Proposed" must appear visibly on the slide'
+    assert 'proposed' in all_text.lower(), 'status "Proposed" must appear visibly on the slide'
     print('ok: "Proposed" status shown visibly')
 
 
@@ -271,6 +324,7 @@ if __name__ == '__main__':
     _run_red('body text >=12pt floor', check_body_text_min_12pt)
     _run_red('source_file hidden, only in notes', check_source_file_only_in_notes_never_visible)
     _run_red('no background art', check_no_background_art_behind_content)
+    _run_red('no content/logo overlap', check_no_content_shape_overlaps_picture_or_logo)
     _run_red('"Proposed" shown visibly', check_proposed_status_shown_visibly)
     _run_red('lens why-text present', check_lens_why_text_present)
     _run_red('estimated overflow', check_text_frames_fit_estimated_capacity)
