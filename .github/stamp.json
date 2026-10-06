@@ -13,6 +13,7 @@
   ],
   "merge": {
     "method": "merge",
+    "requiredChecks": ["e2e"],
     "deadlineMinutes": 20,
     "deleteBranch": true
   }
