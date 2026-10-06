@@ -47,7 +47,8 @@
           <span class="help" id="solutionHelp">Only if you already have something in mind.</span>
           <textarea id="solution" aria-labelledby="solutionL" aria-describedby="solutionHelp"></textarea></div>
         <div class="field"><span class="q" id="culL">Culture factors at play</span>
-          <div class="culture" role="group" aria-labelledby="culL" id="culture">
+          <span class="help" id="cultureHelp">Pick up to 3.</span>
+          <div class="culture" role="group" aria-labelledby="culL" aria-describedby="cultureHelp" id="culture">
             <fieldset><legend>Operational Excellence</legend>
               <label class="check"><input type="checkbox" value="Fastest to Ready">Fastest to Ready</label>
               <label class="check"><input type="checkbox" value="Built to Last">Built to Last</label>
@@ -66,7 +67,8 @@
               <label class="check"><input type="checkbox" value="Performance Paths">Performance Paths</label>
               <label class="check"><input type="checkbox" value="Failure on the Path to Success">Failure on the Path to Success</label><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
             </fieldset>
-          </div></div>
+          </div>
+          <span class="help" id="cultureStatus" role="status" aria-live="polite"></span></div>
         <div class="field"><label class="q" for="freq">How often does this need arise</label><!-- ste-disable-line STE020: owner ruling 2026-09-30, form questions are full sentences -->
           <input type="text" id="freq" list="freqList" required autocomplete="off" placeholder="Choose or type how often">
           <datalist id="freqList">

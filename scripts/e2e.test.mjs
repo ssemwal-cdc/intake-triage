@@ -204,6 +204,49 @@ async function run(){
       ok('culture checkbox unchecks', !(await cultureBox.isChecked()));
       await cultureBox.check();
 
+      // culture cap: at most 3 ticked (owner ruling 2026-10-06). Poka Yoke is ticked; tick 2 more.
+      const cultureVals = ['Built to Last', 'Any Prototype', 'Pareto Principle'];
+      await page.locator(`#culture input[value="${cultureVals[0]}"]`).check();
+      await page.locator(`#culture input[value="${cultureVals[1]}"]`).check();
+      const fourth = page.locator(`#culture input[value="${cultureVals[2]}"]`);
+      await fourth.evaluate((el) => el.click()); // the box is disabled; force the click
+      ok('culture max 3: a 4th tick is refused', !(await fourth.isChecked()));
+      ok('culture max 3: 3 stay ticked', (await page.locator('#culture input:checked').count()) === 3);
+      ok('culture max 3: hint reads "Pick up to 3."', (await page.locator('#cultureHelp').innerText()).trim() === 'Pick up to 3.');
+      ok('culture max 3: group aria-describedby points at the hint', (await page.locator('#culture').getAttribute('aria-describedby')) === 'cultureHelp');
+      ok('culture max 3: status is a polite live region', (await page.locator('#cultureStatus').getAttribute('aria-live')) === 'polite');
+      ok('culture max 3: the 9 unticked boxes are disabled at 3 ticked',
+        (await page.locator('#culture input:not(:checked):disabled').count()) === 9 &&
+        (await page.locator('#culture input:checked:disabled').count()) === 0);
+      ok('culture max 3: status text is non-empty at 3 ticked', (await page.locator('#cultureStatus').innerText()).trim() !== '');
+      await page.locator(`#culture input[value="${cultureVals[0]}"]`).uncheck();
+      ok('culture max 3: no box is disabled after one untick', (await page.locator('#culture input:disabled').count()) === 0);
+      ok('culture max 3: status text is empty after an untick', (await page.locator('#cultureStatus').innerText()).trim() === '');
+      await fourth.check();
+      ok('culture max 3: unticking frees a slot', await fourth.isChecked());
+      await fourth.uncheck();
+      await page.locator(`#culture input[value="${cultureVals[1]}"]`).uncheck();
+      // restored state (back/forward): boxes ticked with no change event, then pageshow
+      await page.evaluate((vals) => {
+        for (const v of vals) document.querySelector(`#culture input[value="${v}"]`).checked = true;
+        window.dispatchEvent(new Event('pageshow'));
+      }, cultureVals.slice(0, 2));
+      ok('culture max 3: restored 3 ticked disables the other 9 after pageshow',
+        (await page.locator('#culture input:not(:checked):disabled').count()) === 9);
+      await page.locator(`#culture input[value="${cultureVals[0]}"]`).uncheck();
+      await page.locator(`#culture input[value="${cultureVals[1]}"]`).uncheck();
+      ok('culture max 3: status region is not display:none while empty (screen readers drop a first update to a new region)',
+        (await page.locator('#cultureStatus').innerText()).trim() === '' &&
+        (await page.locator('#cultureStatus').evaluate((el) => getComputedStyle(el).display)) !== 'none');
+      const cultureWrites = [];
+      page.on('request', (r) => { if (r.method() === 'PUT') cultureWrites.push(r.url()); });
+      const overCapRejected = await page.evaluate(() =>
+        window.submitRequest({ shortName: 'Over cap', submittedAt: '2026-10-06T00:00:00.000Z',
+          cultureFactors: ['Built to Last', 'Any Prototype', 'Pareto Principle', 'Poka Yoke'] }).then(() => false, () => true));
+      ok('culture max 3: submitRequest with 4 factors rejects', overCapRejected === true);
+      await page.waitForTimeout(300);
+      ok('culture max 3: the rejected submit sends no PUT', cultureWrites.length === 0);
+
       // radio switches among gap tiles (Remember is already checked, from the focus-ring step)
       ok('gap radio starts on Remember', await page.locator('input[name=gap][value=Remember]').isChecked());
       await radioLabel(page, 'gap', 'Verify').click();
@@ -237,6 +280,8 @@ async function run(){
 
       // submit; button disables while in flight; capture the PUT body
       let putBody = null;
+      await page.locator(`#culture input[value="${cultureVals[0]}"]`).check();
+      await page.locator(`#culture input[value="${cultureVals[1]}"]`).check(); // 3 ticked, so the reset below has a lock to clear
       const putPromise = page.waitForRequest((r) => r.method() === 'PUT' && /\/contents\/submissions\//.test(r.url()));
       await page.click('button[type=submit]');
       const putReq = await putPromise;
@@ -276,6 +321,8 @@ async function run(){
       await page.click('#another');
       ok('start another request resets the form', (await page.locator('#name').inputValue()) === '' && await page.locator('#f').isVisible());
       ok('start another request resets the system follow-up', !(await wbFollowup.isVisible()));
+      ok('start another request leaves no culture box disabled', (await page.locator('#culture input:disabled').count()) === 0);
+      ok('start another request empties the culture status', (await page.locator('#cultureStatus').innerText()).trim() === '');
 
       // failed submit keeps answers, shows error, no confirmation
       await page.fill('#name', 'Ada Lovelace');
