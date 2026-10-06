@@ -129,8 +129,17 @@ def check_budgets(f):
         if score_sum != f['total']:
             errors.append(f"'total' is {f['total']}, but the lens scores sum to {score_sum}")
 
-    if word_count(f['decision']['ask']) > 20:
-        errors.append(f"'decision.ask' is {word_count(f['decision']['ask'])} words, budget is 20")
+    decision = f['decision']
+    if word_count(decision['ask']) > 20:
+        errors.append(f"'decision.ask' is {word_count(decision['ask'])} words, budget is 20")
+    if word_count(decision['owner']) > 6:
+        errors.append(f"'decision.owner' is {word_count(decision['owner'])} words, budget is 6")
+    if word_count(decision['by']) > 4:
+        errors.append(f"'decision.by' is {word_count(decision['by'])} words, budget is 4")
+    if word_count(f['requester']) > 5:
+        errors.append(f"'requester' is {word_count(f['requester'])} words, budget is 5")
+    if word_count(f['function']) > 5:
+        errors.append(f"'function' is {word_count(f['function'])} words, budget is 5")
 
     if errors:
         raise ValueError('Slide text over budget, shorten before building:\n' + '\n'.join(' - ' + e for e in errors))
@@ -345,8 +354,19 @@ def build(fields, out_path, master_path=None):
         return round(lines * line_h) + pad
 
     # --- Decision band: pinned just above the footer row, same spot on
-    # every slide (template consistency). ---
-    band_h = 500000
+    # every slide (template consistency). Sized for its worst-case text
+    # (the decision.owner/by word budgets): 500000 EMU holds it at 13pt in
+    # the common case; a long decision.ask/owner/by first drops to the
+    # 12pt floor, and only grows the band if even that would overflow.
+    decision = fields['decision']
+    band_text = f"Decision needed: {decision['ask']} · Owner: {decision['owner']} · By: {decision['by']}"
+    band_text_width = slide_w - (int(margin) - 91440)
+    band_h, band_font = 500000, 13
+    band_need = est_h(band_text, band_text_width, band_font, pad=100000)
+    if band_need > band_h:
+        band_font = 12
+        band_need = est_h(band_text, band_text_width, band_font, pad=100000)
+        band_h = max(band_h, band_need)
     band_top = footer_top - GAP - band_h
     available_h = band_top - GAP - body_top
 
@@ -423,14 +443,17 @@ def build(fields, out_path, master_path=None):
     set_text(disp_box.text_frame, [(disp_text, ONYX, False)], 12, align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.TOP)
 
     band = add_rect(slide, 0, band_top, slide_w, band_h, ONYX)
-    decision = fields['decision']
-    band_text = f"Decision needed: {decision['ask']} \u00b7 Owner: {decision['owner']} \u00b7 By: {decision['by']}"
     band.text_frame.margin_left = Emu(int(margin) - 91440)  # align with the body's left margin, net of the rect's own text inset
-    set_text(band.text_frame, [(band_text, WHITE, True)], 13, align=PP_ALIGN.LEFT)
+    set_text(band.text_frame, [(band_text, WHITE, True)], band_font, align=PP_ALIGN.LEFT)
 
-    # --- Footer note, beside the master's own footer row ---
+    # --- Footer note, beside the master's own footer row. 9pt is already
+    # the size floor, so a long requester/function (new word budgets)
+    # instead grows the box itself if the estimate says it would wrap
+    # past the layout footer's own height. ---
     footer_width = slide_w - margin - footer_left
     footer_text = f"{fields['requester']}, {fields['function']} \u00b7 submitted {fields['submitted']}"
+    footer_need = est_h(footer_text, footer_width, 9, pad=40000)
+    footer_height = min(max(footer_height, footer_need), slide_h - footer_top)
     footer_box = add_textbox(slide, footer_left, footer_top, footer_width, footer_height, name='Footer note')
     set_text(footer_box.text_frame, [(footer_text, SLATE, False)], 9, align=PP_ALIGN.LEFT)
 

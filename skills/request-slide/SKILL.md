@@ -94,11 +94,11 @@ give you.
      "status": "Triaged | Proposed",
      "decision": {
        "ask": "<= 20 words, what the owner must decide",
-       "owner": "who decides",
-       "by": "YYYY-MM-DD or TBD"
+       "owner": "<= 6 words, who decides",
+       "by": "<= 4 words: YYYY-MM-DD or TBD"
      },
-     "requester": "from the submission",
-     "function": "from the submission",
+     "requester": "<= 5 words, from the submission",
+     "function": "<= 5 words, from the submission",
      "submitted": "the submission's own submitted date, YYYY-MM-DD",
      "notes_sources": [
        {"n": 1, "title": "...", "link": "...", "date": "..."}
@@ -157,9 +157,9 @@ It drops the other 139 slides from the output.
 It reuses that slide's own footer ("Confidential and Proprietary") and
 logo, exactly as the layout provides them. It drops the slide's own four
 Cost/Risk/Time/Benefit tables; a compact scorecard is drawn fresh instead,
-one row per lens plus a Total row. Every text box is drawn with an opaque
-white fill, so the master's own background graphic never shows through
-and crosses the text.
+one row per lens plus a Total row. It drops the master's own background
+swoosh picture outright (by its width, so the small logo picture stays),
+so it never shows through and crosses the text.
 
 Colors, where the master leaves the choice: onyx (#141E27), slate
 (#34444D), orange (#F37820), and #B3530C for small orange text. Arial
