@@ -196,6 +196,15 @@ async function run(){
       await page.locator('#srcs input[value="On paper 🤨"]').check();
       await page.locator('#srcs input[value="NetSuite"]').check();
       await radioLabel(page, 'sens', 'No').click();
+
+      ok('wb follow-up hidden by default', !(await page.locator('#wbField').isVisible()));
+      await radioLabel(page, 'sys', 'Yes').click();
+      ok('wb follow-up shown when sys is Yes', await page.locator('#wbField').isVisible());
+      await radioLabel(page, 'wb', 'Read only').click();
+      await radioLabel(page, 'sys', 'No').click();
+      ok('wb follow-up hidden when sys switches to No', !(await page.locator('#wbField').isVisible()));
+      ok('wb follow-up cleared when sys switches to No', !(await page.locator('input[name=wb]:checked').count()));
+      await radioLabel(page, 'sys', 'Yes').click();
       await radioLabel(page, 'wb', 'Read only').click();
 
       // submit; button disables while in flight; capture the PUT body
@@ -227,6 +236,7 @@ async function run(){
         decoded.informationLivesIn.includes('NetSuite') &&
         decoded.closestGap === 'We take it on trust' &&
         decoded.sensitiveData === 'No' &&
+        decoded.systemConnection === 'Yes' &&
         decoded.systemAccess === 'Read only' &&
         decoded.formTitle === 'Request Intake' &&
         decoded.schemaVersion === 1 &&
@@ -234,9 +244,33 @@ async function run(){
         typeof decoded.submittedAt === 'string'
       );
 
-      // start another request resets the form
+      // start another request resets the form, including the wb follow-up
       await page.click('#another');
       ok('start another request resets the form', (await page.locator('#name').inputValue()) === '' && await page.locator('#f').isVisible());
+      ok('start another request hides the wb follow-up', !(await page.locator('#wbField').isVisible()));
+
+      // systemConnection = No and Unsure: payload carries systemAccess = ''
+      async function submitSysCase(sys, shortName){
+        await page.fill('#name', 'Case ' + sys);
+        await page.fill('#fn', 'Ops');
+        await page.fill('#short', shortName);
+        await page.fill('#steward', 'Case ' + sys);
+        await page.fill('#miss', 'A problem.');
+        await page.fill('#freq', 'Weekly');
+        await radioLabel(page, 'gap', 'See').click();
+        await radioLabel(page, 'sys', sys).click();
+        const putP = page.waitForRequest((r) => r.method() === 'PUT' && /\/contents\/submissions\//.test(r.url()));
+        await page.click('button[type=submit]');
+        const req = await putP;
+        await page.waitForSelector('#done.show', { timeout: 5000 });
+        const decodedCase = JSON.parse(utf8FromB64(JSON.parse(req.postData()).content));
+        await page.click('#another');
+        return decodedCase;
+      }
+      const noCase = await submitSysCase('No', 'No case request');
+      ok('systemConnection No payload has empty systemAccess', noCase.systemConnection === 'No' && noCase.systemAccess === '');
+      const unsureCase = await submitSysCase('Unsure', 'Unsure case request');
+      ok('systemConnection Unsure payload has empty systemAccess', unsureCase.systemConnection === 'Unsure' && unsureCase.systemAccess === '');
 
       // failed submit keeps answers, shows error, no confirmation
       await page.fill('#name', 'Ada Lovelace');
@@ -265,18 +299,26 @@ async function run(){
       await tPage.goto(base + '/triage.html');
       await tPage.waitForSelector('#fileList button');
       const listCount = await tPage.locator('#fileList button').count();
-      ok('triage lists the submitted file', listCount === 1);
+      ok('triage lists the submitted files', listCount === 3);
       const pickerHtml = await tPage.locator('#fileList').innerHTML();
       ok('picker shows no raw ".json" filename text', !/\.json/i.test(pickerHtml));
       const pickerText = await tPage.locator('#fileList').innerText();
       ok('picker shows short name, function, requester, date', /Vendor on-time tracker/.test(pickerText) &&
         /Tax/.test(pickerText) && /Jordan Lee/.test(pickerText) && /\d{4}/.test(pickerText));
       ok('picker shows "Not triaged" status before any save', /Not triaged/.test(pickerText));
-      await tPage.locator('#fileList button').first().click();
+      function systemAccessRow(p){
+        return p.locator('#sampleDl dt', { hasText: 'System access' }).locator('xpath=following-sibling::dd[1]');
+      }
+      await tPage.locator('#fileList button').filter({ hasText: 'No case request' }).click();
+      ok('systemConnection No formats as "No"', (await systemAccessRow(tPage).innerText()) === 'No');
+      await tPage.locator('#fileList button').filter({ hasText: 'Unsure case request' }).click();
+      ok('systemConnection Unsure formats as "Unsure"', (await systemAccessRow(tPage).innerText()) === 'Unsure');
+      await tPage.locator('#fileList button').filter({ hasText: 'Vendor on-time tracker' }).click();
       await tPage.waitForFunction(() => document.getElementById('sampleDl').children.length > 0);
       const recordText = await tPage.locator('#sampleDl').innerText();
       ok('triage shows the submission\'s answers', /Vendor on-time tracker/.test(recordText) && /Tax/.test(recordText));
       ok('triage record shows all 15 rows', (await tPage.locator('#sampleDl dt').count()) === 15);
+      ok('systemConnection Yes formats as "Yes, read only"', (await systemAccessRow(tPage).innerText()) === 'Yes, read only');
 
       await radioLabel(tPage, 'rd', 'Yes').click();
       await radioLabel(tPage, 'de', 'Partly').click();
@@ -293,7 +335,7 @@ async function run(){
 
       await tPage.reload();
       await tPage.waitForSelector('#fileList button');
-      await tPage.locator('#fileList button').first().click();
+      await tPage.locator('#fileList button').filter({ hasText: 'Vendor on-time tracker' }).click();
       await tPage.waitForFunction(() => document.querySelector('input[name=disp]:checked'));
       ok('reload shows the saved disposition', await tPage.locator('input[name=disp][value="Small rock"]').isChecked());
       ok('reload shows the saved fit answers', await tPage.locator('input[name=rd][value=Yes]').isChecked());

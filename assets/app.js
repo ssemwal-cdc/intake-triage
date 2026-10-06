@@ -5,11 +5,19 @@
 
   var f = document.getElementById('f'), errs = document.getElementById('errs'), done = document.getElementById('done');
   var srcOtherCk = document.getElementById('srcOtherCk'), srcOther = document.getElementById('srcOther');
+  var wbField = document.getElementById('wbField');
   var submitBtn = f.querySelector('button[type=submit]');
   srcOtherCk.addEventListener('change', function(){
     var on = srcOtherCk.checked;
     srcOther.hidden = !on;
     if(on) srcOther.focus(); else { srcOther.value=''; srcOther.classList.remove('invalid'); }
+  });
+  f.querySelectorAll('input[name="sys"]').forEach(function(el){
+    el.addEventListener('change', function(){
+      var on = picked('sys') === 'Yes';
+      wbField.hidden = !on;
+      if(!on){ f.querySelectorAll('input[name="wb"]:checked').forEach(function(w){ w.checked = false; }); }
+    });
   });
   function val(id){ return document.getElementById(id).value.trim(); }
   function picked(name){ var x = f.querySelector('input[name="'+name+'"]:checked'); return x ? x.value : ''; }
@@ -39,7 +47,8 @@
       informationLivesIn: srcs,
       closestGap: gapText[picked('gap')] || '',
       sensitiveData: picked('sens') || '',
-      systemAccess: picked('wb') || '',
+      systemConnection: picked('sys') || '',
+      systemAccess: picked('sys') === 'Yes' ? (picked('wb') || '') : '',
       submittedAt: new Date().toISOString(),
       formTitle: FORM_TITLE,
       schemaVersion: 1,
@@ -81,7 +90,7 @@
   });
 
   document.getElementById('another').onclick = function(){
-    f.reset(); srcOther.hidden = true;
+    f.reset(); srcOther.hidden = true; wbField.hidden = true;
     f.querySelectorAll('.invalid').forEach(function(el){el.classList.remove('invalid')});
     done.classList.remove('show'); f.hidden = false; window.scrollTo(0,0);
   };

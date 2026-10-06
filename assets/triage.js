@@ -29,7 +29,7 @@
     frequency: 'Per project', effort: '', users: '',
     informationLivesIn: ['NetSuite','Excel models',"in someone's head"],
     closestGap: 'We take it on trust',
-    sensitiveData: 'Yes', systemAccess: 'Read only',
+    sensitiveData: 'Yes', systemConnection: 'Yes', systemAccess: 'Read only',
     submittedAt: '2026-09-30T12:25:00.000Z', triage: null
   };
 
@@ -43,6 +43,15 @@
   function orNotGiven(v){
     if(Array.isArray(v)) return v.length ? v.join(', ') : 'Not given';
     return v ? v : 'Not given';
+  }
+
+  // systemConnection ("Yes"|"No"|"Unsure"|"") plus the wb follow-up, or an old
+  // record with only the pre-2026-09-30 systemAccess field, shown as-is.
+  function fmtSystemAccess(rec){
+    var conn = rec.systemConnection;
+    if(!conn) return rec.systemAccess ? rec.systemAccess : 'Not given';
+    if(conn === 'Yes') return 'Yes, ' + (rec.systemAccess || 'Unsure').toLowerCase();
+    return conn;
   }
 
   function renderRecord(rec){
@@ -60,7 +69,7 @@
       ['Information lives in', orNotGiven(rec.informationLivesIn)],
       ['Closest gap', orNotGiven(rec.closestGap)],
       ['Sensitive data', orNotGiven(rec.sensitiveData)],
-      ['System access', orNotGiven(rec.systemAccess)],
+      ['System access', fmtSystemAccess(rec)],
       ['Submitted', fmtDate(rec.submittedAt) || 'Not given']
     ];
     sampleDl.innerHTML = '';
