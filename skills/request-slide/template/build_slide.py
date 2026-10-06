@@ -140,8 +140,10 @@ def check_budgets(f):
         errors.append(f"'requester' is {word_count(f['requester'])} words, budget is 5")
     if word_count(f['function']) > 5:
         errors.append(f"'function' is {word_count(f['function'])} words, budget is 5")
-    culture_words = sum(word_count(c) for c in f['culture'])
-    if culture_words > 12:
+    culture = f['culture']
+    if not isinstance(culture, list) or not all(isinstance(c, str) and c.strip() for c in culture):
+        errors.append("'culture' must be a list of non-blank strings ([] if none)")
+    elif (culture_words := sum(word_count(c) for c in culture)) > 12:
         errors.append(f"'culture' total is {culture_words} words, budget is 12")
 
     if errors:

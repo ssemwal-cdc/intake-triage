@@ -442,6 +442,13 @@ def check_refuses_over_budget_culture():
     _expect_value_error(fields, 'culture', 'over-budget culture (14 words, budget 12)')
 
 
+def check_refuses_bad_culture_shape():
+    for bad, label in (("Poka Yoke", 'a string'), (['', ' '], 'blank items'), (None, 'None'), ([1, 2], 'non-strings')):
+        fields = copy.deepcopy(V4_SAMPLE)
+        fields['culture'] = bad
+        _expect_value_error(fields, 'culture', f'culture as {label}')
+
+
 # --- 8. estimated overflow ---------------------------------------------------
 # Rough estimate only: chars-per-line = frame_width_inches * ~(size/ ~6) --
 # here we use a simple constant of 1.9 chars per point-inch, i.e.
@@ -523,6 +530,7 @@ if __name__ == '__main__':
     check_refuses_over_budget_requester()
     check_refuses_over_budget_function()
     check_refuses_over_budget_culture()
+    check_refuses_bad_culture_shape()
     _run_red('geometry guard', check_geometry)
     _run_red('body text >=12pt floor', check_body_text_min_12pt)
     _run_red('source_file hidden, only in notes', check_source_file_only_in_notes_never_visible)
