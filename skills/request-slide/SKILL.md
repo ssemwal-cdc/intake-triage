@@ -119,15 +119,33 @@ give you.
    }
    ```
 
-6. **Run the builder:**
+6. **Build a draft in the scratch folder**, never in the save folder:
    ```
-   python skills/request-slide/template/build_slide.py fields.json <out.pptx>
+   python skills/request-slide/template/build_slide.py fields.json <scratch>/<file-stem>.pptx
    ```
-   Save to the folder the owner names. The default is
-   `~/Documents/intake-slides/<file-stem>.pptx`. The file-stem is the
-   submission file name, without `.json`.
+   The file-stem is the submission file name, without `.json`.
 
-7. **Upload nothing.** The slide stays local.
+7. **Show the owner a preview.** Export the draft's one slide to a PNG,
+   with the first way that works:
+   - Windows with PowerPoint (opens no window):
+     ```
+     powershell -NoProfile -Command "$pp = New-Object -ComObject PowerPoint.Application; $p = $pp.Presentations.Open('<draft.pptx>', $true, $false, $false); $p.Slides(1).Export('<preview.png>','PNG',1600,900); $p.Close()"
+     ```
+   - LibreOffice: `soffice --headless --convert-to png --outdir <scratch> <draft.pptx>`.
+   - When neither works, tell the owner that no preview could render, and
+     send the draft .pptx itself for review.
+
+   Show the PNG inline in chat (`SendUserFile` with `display: "render"`,
+   or `present_files` in Cowork). Then ask the owner to sign off, or to
+   name changes. On changes, edit the fields, rebuild, and show a new
+   preview. Repeat until the owner signs off.
+
+8. **Save only after sign-off.** Copy the signed-off draft to the folder
+   the owner names. The default is
+   `~/Documents/intake-slides/<file-stem>.pptx`. Then send the saved file
+   as a download. Never save or send the .pptx before sign-off.
+
+9. **Upload nothing.** The slide stays local.
 
 ## Requirements
 
