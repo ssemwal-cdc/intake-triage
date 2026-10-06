@@ -84,6 +84,8 @@ give you.
    - If `triage` on the submission is empty, set `status` to `"Proposed"`.
      Propose your own `lenses` scores and `disposition`, grounded in the
      evidence. Say in the handoff that these are proposed, not triaged.
+   - Copy `culture` from the submission's `cultureFactors`, as written.
+     When they total more than 12 words, ask the owner which to show.
    - Pair `disposition` with `disposition_plain`: the plain-English meaning
      of that disposition (for example "Small rock" -> "Fits within a
      month"). Never show the disposition alone.
@@ -115,7 +117,8 @@ give you.
      "notes_sources": [
        {"n": 1, "title": "...", "link": "...", "date": "..."}
      ],
-     "source_file": "the submission file name"
+     "source_file": "the submission file name",
+     "culture": ["the submission's cultureFactors, <= 12 words total, [] if none"]
    }
    ```
 
@@ -205,7 +208,8 @@ throughout.
 Layout, top to bottom:
 - Title: the recommendation sentence. A "PROPOSED" tag shows next to it
   when `status` is `Proposed`.
-- Left column: the problem, then its evidence.
+- Left column: the problem, a "Culture:" line when `culture` is not
+  empty, then the evidence.
 - Right column: the scorecard, the Total row, then the disposition paired
   with its plain meaning.
 - Bottom band: the decision needed, its owner, and its due date, on an

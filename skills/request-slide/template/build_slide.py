@@ -56,7 +56,7 @@ STATUSES = {'Triaged', 'Proposed'}
 REQUIRED_KEYS = {
     'title', 'disposition', 'disposition_plain', 'problem', 'evidence',
     'lenses', 'total', 'status', 'decision', 'requester', 'function',
-    'submitted', 'notes_sources', 'source_file',
+    'submitted', 'notes_sources', 'source_file', 'culture',
 }
 # v3 schema keys: if any of these show up, the caller is passing the old
 # intake-form-shaped fields, not the v4 decision-argument schema.
@@ -140,6 +140,9 @@ def check_budgets(f):
         errors.append(f"'requester' is {word_count(f['requester'])} words, budget is 5")
     if word_count(f['function']) > 5:
         errors.append(f"'function' is {word_count(f['function'])} words, budget is 5")
+    culture_words = sum(word_count(c) for c in f['culture'])
+    if culture_words > 12:
+        errors.append(f"'culture' total is {culture_words} words, budget is 12")
 
     if errors:
         raise ValueError('Slide text over budget, shorten before building:\n' + '\n'.join(' - ' + e for e in errors))
@@ -383,11 +386,15 @@ def build(fields, out_path, master_path=None):
     # group, centering it between the tag and the band, instead of being
     # stretched into the gaps.
     heading_h = 230000
+    # The submission's culture factors, as one 12pt line under the problem;
+    # no line at all when the submission ticks none.
+    culture_text = ' · '.join(fields['culture'])
+    culture_h = est_h('Culture: ' + culture_text, left_w, 12) if culture_text else 0
 
     def left_natural_height(problem_size):
         p_h = est_h(fields['problem'], left_w, problem_size)
         e_h = sum(est_h(b, left_w, 14) for b in fields['evidence'])
-        return p_h, e_h, 2 * (heading_h + HEADING_GAP) + p_h + SECTION_GAP + e_h
+        return p_h, e_h, 2 * (heading_h + HEADING_GAP) + p_h + culture_h + SECTION_GAP + e_h
 
     problem_size = 20
     problem_h, evidence_h, left_natural = left_natural_height(problem_size)
@@ -400,7 +407,13 @@ def build(fields, out_path, master_path=None):
     cursor += heading(slide, left_x, cursor, left_w, 'THE PROBLEM') + HEADING_GAP
     problem_box = add_textbox(slide, left_x, cursor, left_w, problem_h)
     set_text(problem_box.text_frame, [(fields['problem'], SLATE, False)], problem_size, anchor=MSO_ANCHOR.TOP)
-    cursor += problem_h + SECTION_GAP
+    cursor += problem_h
+    if culture_text:
+        culture_box = add_textbox(slide, left_x, cursor, left_w, culture_h, name='Culture line')
+        set_text(culture_box.text_frame, [('Culture: ', ORANGE_SMALL, True), (culture_text, SLATE, False)], 12,
+                 anchor=MSO_ANCHOR.TOP)
+        cursor += culture_h
+    cursor += SECTION_GAP
 
     cursor += heading(slide, left_x, cursor, left_w, 'EVIDENCE') + HEADING_GAP
     evidence_box = add_textbox(slide, left_x, cursor, left_w, evidence_h)

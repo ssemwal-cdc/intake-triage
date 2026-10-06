@@ -13,7 +13,8 @@ v4 input schema (see request-slide-v4-checks brief):
   "total": int (== sum of lens scores), "status": "Triaged"|"Proposed",
   "decision": {"ask": str (<=20 words), "owner": str, "by": str},
   "requester": str, "function": str, "submitted": "YYYY-MM-DD",
-  "notes_sources": [{"n", "title", "link", "date"}, ...], "source_file": str }
+  "notes_sources": [{"n", "title", "link", "date"}, ...], "source_file": str,
+  "culture": [str, ...] (the submission's cultureFactors, <=12 words total, may be empty) }
 """
 import copy
 import json
@@ -55,6 +56,7 @@ V4_SAMPLE = {
         {"n": 2, "title": "System list, sample", "link": "n/a", "date": "2026-10-05"},
     ],
     "source_file": "2026-09-30-entity-level-tax-allocation-check-sample.json",
+    "culture": ["Poka Yoke", "Power of Incremental"],
 }
 
 V3_SAMPLE = {
@@ -412,6 +414,34 @@ def check_lens_why_text_present():
     print('ok: every lens why-text appears on the slide')
 
 
+# --- 7b. culture line: shown when the submission ticks culture factors ----
+
+def _slide_text(fields):
+    slide = Presentation(str(_build(fields))).slides[0]
+    return ' '.join(sh.text_frame.text for sh in slide.shapes if sh.has_text_frame)
+
+
+def check_culture_line_shown():
+    text = _slide_text(copy.deepcopy(V4_SAMPLE))
+    assert 'Culture:' in text, 'no "Culture:" line on the slide'
+    for item in V4_SAMPLE['culture']:
+        assert item in text, f"culture item {item!r} missing from slide"
+    print('ok: culture line shows every culture item')
+
+
+def check_no_culture_line_when_empty():
+    fields = copy.deepcopy(V4_SAMPLE)
+    fields['culture'] = []
+    assert 'Culture:' not in _slide_text(fields), 'empty culture must draw no "Culture:" line'
+    print('ok: no culture line when culture is empty')
+
+
+def check_refuses_over_budget_culture():
+    fields = copy.deepcopy(V4_SAMPLE)
+    fields['culture'] = ['Lowest Total Cost of Ownership', 'Failure on the Path to Success', 'Built to Last']
+    _expect_value_error(fields, 'culture', 'over-budget culture (14 words, budget 12)')
+
+
 # --- 8. estimated overflow ---------------------------------------------------
 # Rough estimate only: chars-per-line = frame_width_inches * ~(size/ ~6) --
 # here we use a simple constant of 1.9 chars per point-inch, i.e.
@@ -492,6 +522,7 @@ if __name__ == '__main__':
     check_refuses_over_budget_decision_by()
     check_refuses_over_budget_requester()
     check_refuses_over_budget_function()
+    check_refuses_over_budget_culture()
     _run_red('geometry guard', check_geometry)
     _run_red('body text >=12pt floor', check_body_text_min_12pt)
     _run_red('source_file hidden, only in notes', check_source_file_only_in_notes_never_visible)
@@ -501,6 +532,8 @@ if __name__ == '__main__':
     _run_red('column shapes stay close', check_column_shapes_stay_close)
     _run_red('"Proposed" shown visibly', check_proposed_status_shown_visibly)
     _run_red('lens why-text present', check_lens_why_text_present)
+    _run_red('culture line shown', check_culture_line_shown)
+    _run_red('no culture line when empty', check_no_culture_line_when_empty)
     _run_red('estimated overflow', check_text_frames_fit_estimated_capacity)
     _run_red('boundary fields fit band/footer', check_boundary_fields_still_fit_band_and_footer)
     print('all checks ran (RED expected on commit 5e613a8, before the v4 build lands)')

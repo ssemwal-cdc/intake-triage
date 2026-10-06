@@ -7,6 +7,7 @@ Status: ruled 2026-10-05 by the owner: build the skill and the button. Skill and
 - Context: at most 3 SharePoint and 3 Teams searches built from the request's own terms. Keep only hits tied to the request. Skip Teams chat search when `sensitiveData` is "Yes". Show the owner the source list before building.
 - Slide, about 120 words: title (short name and disposition); the ask; who and how often; triage scores and note; 2 to 3 context bullets with numbered source markers, sources in speaker notes.
 - Output: a .pptx in a local folder the owner names. Nothing is uploaded.
+- Ruled 2026-10-06: the slide shows the submission's culture factors as one "Culture:" line under the problem, at most 12 words. No line when there are none.
 - Ruled 2026-10-06: the owner signs off before any save. The skill builds a draft in a scratch folder and shows a preview image in chat. It saves the .pptx to the owner's folder, and sends it as a download, only after the owner signs off.
 - triage.html gets one "Copy slide prompt" button that copies the request's file name in a ready prompt.
 - The skill ships one fixed slide template, so every slide looks the same: Compass design language (onyx #141E27, slate #34444D, orange #F37820, #B3530C for small orange text, Arial, the Compass logo from assets/compass-logo.png). The template's layout and type sizes never vary per request; only the text fills change.
