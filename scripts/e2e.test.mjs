@@ -204,6 +204,31 @@ async function run(){
       ok('culture checkbox unchecks', !(await cultureBox.isChecked()));
       await cultureBox.check();
 
+      // culture cap: at most 3 ticked (owner ruling 2026-10-06). Poka Yoke is ticked; tick 2 more.
+      const cultureVals = ['Built to Last', 'Any Prototype', 'Pareto Principle'];
+      await page.locator(`#culture input[value="${cultureVals[0]}"]`).check();
+      await page.locator(`#culture input[value="${cultureVals[1]}"]`).check();
+      const fourth = page.locator(`#culture input[value="${cultureVals[2]}"]`);
+      await fourth.evaluate((el) => el.click()); // the box is disabled; force the click
+      ok('culture max 3: a 4th tick is refused', !(await fourth.isChecked()));
+      ok('culture max 3: 3 stay ticked', (await page.locator('#culture input:checked').count()) === 3);
+      ok('culture max 3: hint reads "Pick up to 3."', (await page.locator('#cultureHelp').innerText()).trim() === 'Pick up to 3.');
+      ok('culture max 3: group aria-describedby points at the hint', (await page.locator('#culture').getAttribute('aria-describedby')) === 'cultureHelp');
+      ok('culture max 3: status is a polite live region', (await page.locator('#cultureStatus').getAttribute('aria-live')) === 'polite');
+      await page.locator(`#culture input[value="${cultureVals[0]}"]`).uncheck();
+      await fourth.check();
+      ok('culture max 3: unticking frees a slot', await fourth.isChecked());
+      await fourth.uncheck();
+      await page.locator(`#culture input[value="${cultureVals[1]}"]`).uncheck();
+      const cultureWrites = [];
+      page.on('request', (r) => { if (r.method() === 'PUT') cultureWrites.push(r.url()); });
+      const overCapRejected = await page.evaluate(() =>
+        window.submitRequest({ shortName: 'Over cap', submittedAt: '2026-10-06T00:00:00.000Z',
+          cultureFactors: ['Built to Last', 'Any Prototype', 'Pareto Principle', 'Poka Yoke'] }).then(() => false, () => true));
+      ok('culture max 3: submitRequest with 4 factors rejects', overCapRejected === true);
+      await page.waitForTimeout(300);
+      ok('culture max 3: the rejected submit sends no PUT', cultureWrites.length === 0);
+
       // radio switches among gap tiles (Remember is already checked, from the focus-ring step)
       ok('gap radio starts on Remember', await page.locator('input[name=gap][value=Remember]').isChecked());
       await radioLabel(page, 'gap', 'Verify').click();
