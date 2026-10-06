@@ -150,11 +150,14 @@ Master path, in order:
 
 1. `--master <path>` on the command line.
 2. The `INTAKE_SLIDE_MASTER` environment variable.
-3. The default: the owner's OneDrive copy, at
+3. The bundled copy, `assets/compass-master.pptx`, trimmed to the Business
+   Lens slide. It ships only inside the packaged skill. Git ignores it.
+   Repackage the skill when Marketing updates the master.
+4. The default: the owner's OneDrive copy, at
    `C:\Users\ShivamSemwal\OneDrive - Compass Datacenters, LLC\Downloads 16 Pro\Template_Powerpoint_Master_V2.1_03-27-25.pptx`.
-4. In Cowork, when the default path is not readable, ask the owner to
+5. In Cowork, when the default path is not readable, ask the owner to
    share the `Downloads 16 Pro` OneDrive folder with the session.
-5. When none of these works, ask the owner to attach the master. Pass the
+6. When none of these works, ask the owner to attach the master. Pass the
    attached file's path with `--master`. Never build on any other template.
 
 `.gitignore` blocks any `*master*.pptx` or `Template_Powerpoint_Master*.pptx`
