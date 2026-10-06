@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_slide  # noqa: E402
 
 from pptx import Presentation
+from pptx.util import Emu
 
 LENSES = ['cost', 'risk', 'time', 'benefit']
 
@@ -206,48 +207,110 @@ def check_source_file_only_in_notes_never_visible():
     print('ok: no visible ".json", source_file only in speaker notes')
 
 
-# --- 5. plain white layout, no background art behind content ---------------
+# --- 5. no picture inside the content area; a full-slide background art ----
+# still fails. The content area is the band below the title rule and above
+# the footer row -- the Compass logo and any other small corner picture are
+# allowed to live outside that band (title row, or below the footer row).
 
-def check_no_background_art_behind_content():
+PICTURE = 13
+
+
+def _all_pictures(slide):
+    layout = slide.slide_layout
+    for src in (slide.shapes, layout.shapes, layout.slide_master.shapes):
+        for sh in src:
+            if sh.shape_type == PICTURE and None not in (sh.left, sh.top, sh.width, sh.height):
+                yield sh
+
+
+def _content_area_bounds(fields):
+    """Same geometry the build itself uses: title bottom to the layout's
+    own footer row. Recomputed from the master directly (not from build's
+    internals) so this stays a check on the built output, not a mirror of
+    the implementation."""
+    master_path = build_slide.resolve_master_path(None)
+    prs = Presentation(master_path)
+    idx = build_slide.find_business_lens_slide(prs)
+    slide = prs.slides[idx]
+    title_ph = next(sh for sh in slide.placeholders if sh.placeholder_format.idx == 0)
+    content_top = title_ph.top + title_ph.height
+    layout_footer = next(
+        (sh for sh in slide.slide_layout.shapes if 'footer' in sh.name.lower() and sh.has_text_frame), None
+    )
+    content_bottom = layout_footer.top if layout_footer is not None else prs.slide_height - Emu(400000)
+    return content_top, content_bottom
+
+
+def check_no_picture_inside_content_area():
     out = _build(copy.deepcopy(V4_SAMPLE))
     prs = Presentation(str(out))
     slide = prs.slides[0]
-    layout = slide.slide_layout
-    pics = [sh for sh in list(slide.shapes) + list(layout.shapes) if sh.shape_type == 13]  # PICTURE
-    assert not pics, f"background picture(s) found on a layout that must be plain white: {[p.name for p in pics]}"
-    print('ok: no picture/graphic on slide or layout (plain white layout)')
+    content_top, content_bottom = _content_area_bounds(V4_SAMPLE)
+    bad = []
+    for sh in _all_pictures(slide):
+        if sh.top < content_bottom and sh.top + sh.height > content_top:
+            bad.append((sh.name, sh.top, sh.height))
+    assert not bad, (
+        f"picture(s) fall inside the content area (below the title, above the footer): {bad}"
+    )
+    print('ok: no picture (background art or otherwise) inside the content area')
 
 
-# --- 5b. no content shape overlaps a picture/logo on layout or master ------
+# --- 5b. the Compass logo must be present on the slide, and visible --------
 
-def check_no_content_shape_overlaps_picture_or_logo():
-    """A picture shape (type 13) living on the layout or the slide master --
-    e.g. the Compass logo -- can sit anywhere on the canvas, including top
-    right where a status tag is drawn. drop_lens_tables only removes the
-    master's own lens tables; it does not move or shrink the logo, so a
-    content shape placed over it is a real, separate overlap bug from the
-    plain-white-background check above."""
+LOGO_MAX_AREA_FRACTION = 0.05  # a logo is a small corner picture, not the
+# full-slide background swoosh, which covers most of the slide area
+
+
+def check_logo_present_and_visible():
     fields = copy.deepcopy(V4_SAMPLE)
-    fields['status'] = 'Proposed'  # draws the status tag most likely to collide
+    fields['status'] = 'Proposed'  # draws the status tag most likely to cover it
     out = _build(fields)
     prs = Presentation(str(out))
     slide = prs.slides[0]
-    pic_rects = [
-        (sh.name, (sh.left, sh.top, sh.width, sh.height))
-        for src in (slide.slide_layout.shapes, slide.slide_layout.slide_master.shapes)
-        for sh in src
-        if sh.shape_type == 13 and None not in (sh.left, sh.top, sh.width, sh.height)
+    slide_area = prs.slide_width * prs.slide_height
+    logos = [
+        sh for sh in _all_pictures(slide)
+        if (sh.width * sh.height) / slide_area < LOGO_MAX_AREA_FRACTION
     ]
-    content_rects = [
-        (sh.name, (sh.left, sh.top, sh.width, sh.height)) for sh in _content_shapes(slide)
-    ]
-    hits = []
-    for c_name, c_rect in content_rects:
-        for p_name, p_rect in pic_rects:
-            if _rects_overlap(c_rect, p_rect):
-                hits.append((c_name, p_name))
-    assert not hits, f"content shape(s) overlap a layout/master picture (logo): {hits}"
-    print('ok: no content shape overlaps a picture/logo on layout or master')
+    assert logos, 'the Compass logo picture must be present on the slide, layout or master'
+    logo = logos[0]
+    logo_rect = (logo.left, logo.top, logo.width, logo.height)
+    content_rects = [(sh.name, (sh.left, sh.top, sh.width, sh.height)) for sh in _content_shapes(slide)]
+    coverers = [name for name, rect in content_rects if _rects_overlap(rect, logo_rect)]
+    assert not coverers, f"logo {logo.name!r} is covered by content shape(s): {coverers}"
+    print('ok: Compass logo present and not covered by any content shape')
+
+
+# --- 5c. decision band sits close above the footer row, no empty gap ------
+
+FOOTER_GAP_MAX_IN = 0.6
+EMU_PER_INCH = 914400
+
+
+def _decision_band(slide):
+    """The decision band is the only full-width (left==0, width==slide_w)
+    autoshape rectangle this script draws."""
+    slide_w = slide.part.package.presentation_part.presentation.slide_width
+    for sh in slide.shapes:
+        if sh.shape_type == 1 and sh.left == 0 and sh.width == slide_w:
+            return sh
+    return None
+
+
+def check_decision_band_close_to_footer():
+    out = _build(copy.deepcopy(V4_SAMPLE))
+    prs = Presentation(str(out))
+    slide = prs.slides[0]
+    band = _decision_band(slide)
+    assert band is not None, 'no full-width decision band shape found'
+    _, footer_top = _content_area_bounds(V4_SAMPLE)
+    band_bottom = band.top + band.height
+    gap_in = (footer_top - band_bottom) / EMU_PER_INCH
+    assert 0 <= gap_in <= FOOTER_GAP_MAX_IN, (
+        f"decision band bottom is {gap_in:.2f}in above the footer row, budget is {FOOTER_GAP_MAX_IN}in"
+    )
+    print(f'ok: decision band sits {gap_in:.2f}in above the footer row')
 
 
 # --- 6. "Proposed" must be visible when status is Proposed ------------------
@@ -323,8 +386,9 @@ if __name__ == '__main__':
     _run_red('geometry guard', check_geometry)
     _run_red('body text >=12pt floor', check_body_text_min_12pt)
     _run_red('source_file hidden, only in notes', check_source_file_only_in_notes_never_visible)
-    _run_red('no background art', check_no_background_art_behind_content)
-    _run_red('no content/logo overlap', check_no_content_shape_overlaps_picture_or_logo)
+    _run_red('no picture inside content area', check_no_picture_inside_content_area)
+    _run_red('logo present and visible', check_logo_present_and_visible)
+    _run_red('decision band close to footer', check_decision_band_close_to_footer)
     _run_red('"Proposed" shown visibly', check_proposed_status_shown_visibly)
     _run_red('lens why-text present', check_lens_why_text_present)
     _run_red('estimated overflow', check_text_frames_fit_estimated_capacity)
