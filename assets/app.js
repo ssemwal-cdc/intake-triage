@@ -30,6 +30,7 @@
     cultureStatus.textContent = n >= CULTURE_MAX ? '3 picked. Untick one to pick another.' : '';
   }
   Array.prototype.forEach.call(cultureBoxes, function(c){ c.addEventListener('change', updateCulture); });
+  updateCulture(); window.addEventListener('pageshow', updateCulture);  // restored ticks fire no change event
   function val(id){ return document.getElementById(id).value.trim(); }
   function picked(name){ var x = f.querySelector('input[name="'+name+'"]:checked'); return x ? x.value : ''; }
   var required = [['name','Your name'],['fn','Function'],['short','Short name for the request'],

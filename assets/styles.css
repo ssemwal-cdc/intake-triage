@@ -72,7 +72,7 @@
   .culture .check{font-size:14.5px;padding:3px 0}
   .culture .check:has(input:disabled){color:var(--muted)}
   #cultureStatus{margin:6px 0 0}
-  #cultureStatus:empty{display:none}
+  #cultureStatus:empty{margin:0}  /* stays rendered: a live region that appears with its text is often not announced */
   .followup{margin-top:8px}
 
   .actions{margin:40px 0 0 1.95em;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
