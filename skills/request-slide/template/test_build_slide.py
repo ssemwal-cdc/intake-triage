@@ -313,6 +313,50 @@ def check_decision_band_close_to_footer():
     print(f'ok: decision band sits {gap_in:.2f}in above the footer row')
 
 
+# --- 5d. within each column, consecutive content shapes stay close --------
+# (no single gap swallows all the column's leftover space). Columns: left is
+# x < 55% of slide width, right is the rest. Scoped to the shapes between
+# the PROPOSED tag and the decision band; the gap above the tag and below
+# the band is exempt.
+
+COLUMN_SPLIT_FRACTION = 0.55
+MAX_INTRA_COLUMN_GAP_IN = 0.5
+
+
+def check_column_shapes_stay_close():
+    fields = copy.deepcopy(V4_SAMPLE)
+    fields['status'] = 'Proposed'
+    out = _build(fields)
+    prs = Presentation(str(out))
+    slide = prs.slides[0]
+    slide_w = prs.slide_width
+
+    tag = next(sh for sh in slide.shapes if sh.has_text_frame and 'proposed' in sh.text_frame.text.lower())
+    band = _decision_band(slide)
+    assert band is not None, 'no full-width decision band shape found'
+
+    between = [
+        sh for sh in _content_shapes(slide)
+        if sh is not tag and sh is not band
+        and sh.top >= tag.top + tag.height and sh.top < band.top
+    ]
+    split_x = slide_w * COLUMN_SPLIT_FRACTION
+    columns = {
+        'left': sorted((sh for sh in between if sh.left < split_x), key=lambda sh: sh.top),
+        'right': sorted((sh for sh in between if sh.left >= split_x), key=lambda sh: sh.top),
+    }
+    bad = []
+    for col_name, shapes in columns.items():
+        for prev, nxt in zip(shapes, shapes[1:]):
+            gap_in = (nxt.top - (prev.top + prev.height)) / EMU_PER_INCH
+            if gap_in > MAX_INTRA_COLUMN_GAP_IN:
+                bad.append((col_name, prev.name, nxt.name, round(gap_in, 2)))
+    assert not bad, (
+        f"gap(s) over {MAX_INTRA_COLUMN_GAP_IN}in between consecutive shapes in a column: {bad}"
+    )
+    print('ok: no column has a gap over 0.5in between consecutive shapes')
+
+
 # --- 6. "Proposed" must be visible when status is Proposed ------------------
 
 def check_proposed_status_shown_visibly():
@@ -389,6 +433,7 @@ if __name__ == '__main__':
     _run_red('no picture inside content area', check_no_picture_inside_content_area)
     _run_red('logo present and visible', check_logo_present_and_visible)
     _run_red('decision band close to footer', check_decision_band_close_to_footer)
+    _run_red('column shapes stay close', check_column_shapes_stay_close)
     _run_red('"Proposed" shown visibly', check_proposed_status_shown_visibly)
     _run_red('lens why-text present', check_lens_why_text_present)
     _run_red('estimated overflow', check_text_frames_fit_estimated_capacity)
