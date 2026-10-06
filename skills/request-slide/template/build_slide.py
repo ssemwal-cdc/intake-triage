@@ -145,8 +145,14 @@ def check_budgets(f):
         raise ValueError('Slide text over budget, shorten before building:\n' + '\n'.join(' - ' + e for e in errors))
 
 
+# A copy trimmed to the Business Lens slide ships inside the packaged skill
+# (gitignored: the repo is public). It goes stale when Marketing updates the master.
+BUNDLED_MASTER = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'assets', 'compass-master.pptx')
+
+
 def resolve_master_path(master_arg):
-    return master_arg or os.environ.get('INTAKE_SLIDE_MASTER') or DEFAULT_MASTER
+    bundled = BUNDLED_MASTER if os.path.isfile(BUNDLED_MASTER) else None
+    return master_arg or os.environ.get('INTAKE_SLIDE_MASTER') or bundled or DEFAULT_MASTER
 
 
 def find_business_lens_slide(prs):
