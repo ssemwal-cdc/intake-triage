@@ -446,9 +446,38 @@ def check_longest_culture_tags_fit():
     fields['culture'] = list(LONGEST_CULTURE)
     slide, tags = _check_tags(fields, 'longest 3')
     slide_w = slide.part.package.presentation_part.presentation.slide_width
-    assert tags[-1].left + tags[-1].width <= slide_w, 'the longest 3 culture tags run off the slide'
+    title = next(sh for sh in slide.placeholders if sh.placeholder_format.idx == 0)
+    right_edge = slide_w - title.left  # content area: title's left margin, mirrored on the right
+    assert tags[-1].left + tags[-1].width <= right_edge, 'the longest 3 culture tags run past the content area'
+    try:
+        from PIL import ImageFont
+        font = ImageFont.truetype('C:/Windows/Fonts/arial.ttf', 16)  # 12pt at 96 dpi = 16px
+    except (ImportError, OSError) as e:
+        print(f'  SKIP real text width: PIL or Arial missing ({e})')
+        font = None
     for t in tags:
         assert len(t.text_frame.text) <= _estimate_capacity_chars(t.width, t.height, 12), f"tag {t.text_frame.text!r} overflows"
+        if font:
+            text_emu = font.getlength(t.text_frame.text) / 96 * 914400
+            tf = t.text_frame
+            need = text_emu + tf.margin_left + tf.margin_right
+            assert t.width >= need, f"tag {tf.text!r} is {need - t.width:.0f} EMU too narrow for its text"
+
+
+def check_tag_row_that_does_not_fit_is_refused():
+    fields = copy.deepcopy(V4_SAMPLE)
+    fields['culture'] = ['A free-text culture name that is far too long to fit'] * 3
+    _expect_value_error(fields, 'do not fit', 'three long culture names')
+
+
+def check_empty_culture_draws_no_tag_row():
+    def heading_top(culture):
+        fields = copy.deepcopy(V4_SAMPLE)
+        fields['culture'] = culture
+        slide = Presentation(str(_build(fields))).slides[0]
+        return next(sh for sh in slide.shapes if sh.has_text_frame and sh.text_frame.text == 'THE PROBLEM').top
+    # A row of tags pushes the content down; an empty list must not leave that row's space behind.
+    assert heading_top([]) < heading_top(['Poka Yoke']), 'empty culture still reserves space for a tag row'
 
 
 def check_no_culture_tags_when_empty():
