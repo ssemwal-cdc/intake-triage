@@ -135,6 +135,35 @@ def check_refuses_missing_source_for_evidence_marker():
     _expect_value_error(fields, '9', 'evidence [9] with no notes_sources entry')
 
 
+# decision.owner, decision.by, requester, function feed fixed-height boxes
+# (the decision band, the footer row) with no word budget enforced today --
+# an overflow bypass the reviewer found. Budgets: owner 6, by 4, requester 5,
+# function 5 words.
+
+def check_refuses_over_budget_decision_owner():
+    fields = copy.deepcopy(V4_SAMPLE)
+    fields['decision']['owner'] = ' '.join(['Owner'] * 7)
+    _expect_value_error(fields, 'owner', 'over-budget decision.owner (7 words, budget 6)')
+
+
+def check_refuses_over_budget_decision_by():
+    fields = copy.deepcopy(V4_SAMPLE)
+    fields['decision']['by'] = ' '.join(['By'] * 5)
+    _expect_value_error(fields, 'by', 'over-budget decision.by (5 words, budget 4)')
+
+
+def check_refuses_over_budget_requester():
+    fields = copy.deepcopy(V4_SAMPLE)
+    fields['requester'] = ' '.join(['Requester'] * 6)
+    _expect_value_error(fields, 'requester', 'over-budget requester (6 words, budget 5)')
+
+
+def check_refuses_over_budget_function():
+    fields = copy.deepcopy(V4_SAMPLE)
+    fields['function'] = ' '.join(['Function'] * 6)
+    _expect_value_error(fields, 'function', 'over-budget function (6 words, budget 5)')
+
+
 # --- 2. geometry guard ------------------------------------------------------
 
 def _content_shapes(slide):
@@ -422,11 +451,47 @@ def check_text_frames_fit_estimated_capacity():
     print('ok: no text frame estimated to overflow its box')
 
 
+# --- 8b. boundary-length owner/by/requester/function still fit -------------
+# Once check_budgets refuses over-budget values, the budgets themselves
+# (6/4/5/5 words) must still leave the decision band and footer box -- both
+# fixed-size boxes -- fitting their text at the boundary, under the same
+# chars-per-line x lines estimate used above.
+
+def check_boundary_fields_still_fit_band_and_footer():
+    fields = copy.deepcopy(V4_SAMPLE)
+    fields['decision']['owner'] = ' '.join(['Owner'] * 6)
+    fields['decision']['by'] = ' '.join(['By'] * 4)
+    fields['requester'] = ' '.join(['Requester'] * 5)
+    fields['function'] = ' '.join(['Function'] * 5)
+    out = _build(fields)
+    prs = Presentation(str(out))
+    slide = prs.slides[0]
+    band = _decision_band(slide)
+    assert band is not None, 'no full-width decision band shape found'
+    footer = next(sh for sh in slide.shapes if sh.name == 'Footer note')
+    overflowing = []
+    for sh, label in ((band, 'decision band'), (footer, 'footer box')):
+        text = sh.text_frame.text
+        sizes = [r.font.size.pt for p in sh.text_frame.paragraphs for r in p.runs if r.font.size]
+        size_pt = max(sizes) if sizes else 12
+        capacity = _estimate_capacity_chars(sh.width, sh.height, size_pt)
+        if len(text) > capacity:
+            overflowing.append((label, len(text), round(capacity)))
+    assert not overflowing, (
+        f"band/footer text estimated to overflow at the owner/by/requester/function budget boundary: {overflowing}"
+    )
+    print('ok: decision band and footer box still fit at the field-length boundary')
+
+
 if __name__ == '__main__':
     check_refuses_v3_schema()
     check_refuses_bad_total()
     check_refuses_over_budget_field()
     check_refuses_missing_source_for_evidence_marker()
+    check_refuses_over_budget_decision_owner()
+    check_refuses_over_budget_decision_by()
+    check_refuses_over_budget_requester()
+    check_refuses_over_budget_function()
     _run_red('geometry guard', check_geometry)
     _run_red('body text >=12pt floor', check_body_text_min_12pt)
     _run_red('source_file hidden, only in notes', check_source_file_only_in_notes_never_visible)
@@ -437,4 +502,5 @@ if __name__ == '__main__':
     _run_red('"Proposed" shown visibly', check_proposed_status_shown_visibly)
     _run_red('lens why-text present', check_lens_why_text_present)
     _run_red('estimated overflow', check_text_frames_fit_estimated_capacity)
+    _run_red('boundary fields fit band/footer', check_boundary_fields_still_fit_band_and_footer)
     print('all checks ran (RED expected on commit 5e613a8, before the v4 build lands)')
