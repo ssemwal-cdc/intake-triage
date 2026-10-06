@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+      # The e2e serves the site with `python -m http.server`.
+      - run: command -v python || sudo ln -s "$(command -v python3)" /usr/local/bin/python
+      # Playwright stays outside the site's own tree (see README); link it in for this run only.
+      - run: |
+          mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
+          npm init -y >/dev/null
+          npm install playwright@1
+          npx playwright install --with-deps chromium
+          ln -s "$RUNNER_TEMP/pw/node_modules" "$GITHUB_WORKSPACE/node_modules"
+      - run: node scripts/e2e.test.mjs
