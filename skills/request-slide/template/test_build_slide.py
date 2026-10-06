@@ -1,6 +1,10 @@
-"""Self-check for build_slide.py (v4 schema): no framework, just asserts.
+"""Checks for build_slide.py (v4 schema): stdlib asserts, no framework.
 
 Run: python template/test_build_slide.py  (from skills/request-slide/)
+Needs INTAKE_SLIDE_MASTER set to the local master .pptx.
+Each check_* function is one check; a failed assert or any exception fails it.
+Prints one line per failure and a verdict (PASS n/n or FAIL k/n: names).
+Exit code is 1 on any failure, else 0.
 
 Renamed from selfcheck_build_slide.py -- same file, test-naming convention
 only (so the repo's test-scope guard recognizes it as a test path).
@@ -95,21 +99,8 @@ def _expect_value_error(fields, needle, label):
         _build(fields)
     except ValueError as e:
         assert needle.lower() in str(e).lower(), f"{label}: ValueError text {e!r} missing {needle!r}"
-        print(f'ok (RED as expected): {label} refused -- {e}')
         return
-    except Exception as e:  # pragma: no cover - diagnostic path for this red run
-        print(f'RED (wrong reason, pre-v4 code): {label} raised {type(e).__name__}: {e}')
-        return
-    print(f'RED (not refused): {label} built without error -- v4 refusal not implemented')
-
-
-def _run_red(label, fn):
-    """Runs one post-refusal check and reports RED instead of crashing the
-    run, since the v4 build does not exist yet on this commit (5e613a8)."""
-    try:
-        fn()
-    except Exception as e:
-        print(f'RED (expected until v4 build lands): {label} -- {type(e).__name__}: {e}')
+    raise AssertionError(f"{label}: built without error, expected ValueError with {needle!r}")
 
 
 # --- 1. schema / value refusals -------------------------------------------
@@ -198,7 +189,6 @@ def check_geometry():
             assert not _rects_overlap(rect_a, rect_b), (
                 f"shapes '{name_a}' {rect_a} and '{name_b}' {rect_b} overlap"
             )
-    print(f'ok: {len(shapes)} content shapes, none overlap, all inside the slide')
 
 
 # --- 3. font sizes -----------------------------------------------------------
@@ -221,7 +211,6 @@ def check_body_text_min_12pt():
                 if pt < floor:
                     small_runs.append((sh.name, r.text, pt, floor))
     assert not small_runs, f"text below its size floor: {small_runs}"
-    print('ok: no body text below 12pt, footer text at or above 9pt')
 
 
 # --- 4. no ".json" in visible text; source file only in notes --------------
@@ -235,7 +224,6 @@ def check_source_file_only_in_notes_never_visible():
             raise AssertionError(f"visible shape '{sh.name}' shows .json: {sh.text_frame.text!r}")
     notes_text = slide.notes_slide.notes_text_frame.text
     assert V4_SAMPLE['source_file'] in notes_text, 'source_file must appear in speaker notes'
-    print('ok: no visible ".json", source_file only in speaker notes')
 
 
 # --- 5. no picture inside the content area; a full-slide background art ----
@@ -284,7 +272,6 @@ def check_no_picture_inside_content_area():
     assert not bad, (
         f"picture(s) fall inside the content area (below the title, above the footer): {bad}"
     )
-    print('ok: no picture (background art or otherwise) inside the content area')
 
 
 # --- 5b. the Compass logo must be present on the slide, and visible --------
@@ -310,7 +297,6 @@ def check_logo_present_and_visible():
     content_rects = [(sh.name, (sh.left, sh.top, sh.width, sh.height)) for sh in _content_shapes(slide)]
     coverers = [name for name, rect in content_rects if _rects_overlap(rect, logo_rect)]
     assert not coverers, f"logo {logo.name!r} is covered by content shape(s): {coverers}"
-    print('ok: Compass logo present and not covered by any content shape')
 
 
 # --- 5c. decision band sits close above the footer row, no empty gap ------
@@ -341,7 +327,6 @@ def check_decision_band_close_to_footer():
     assert 0 <= gap_in <= FOOTER_GAP_MAX_IN, (
         f"decision band bottom is {gap_in:.2f}in above the footer row, budget is {FOOTER_GAP_MAX_IN}in"
     )
-    print(f'ok: decision band sits {gap_in:.2f}in above the footer row')
 
 
 # --- 5d. within each column, consecutive content shapes stay close --------
@@ -385,7 +370,6 @@ def check_column_shapes_stay_close():
     assert not bad, (
         f"gap(s) over {MAX_INTRA_COLUMN_GAP_IN}in between consecutive shapes in a column: {bad}"
     )
-    print('ok: no column has a gap over 0.5in between consecutive shapes')
 
 
 # --- 6. "Proposed" must be visible when status is Proposed ------------------
@@ -398,7 +382,6 @@ def check_proposed_status_shown_visibly():
     slide = prs.slides[0]
     all_text = ' '.join(sh.text_frame.text for sh in slide.shapes if sh.has_text_frame)
     assert 'proposed' in all_text.lower(), 'status "Proposed" must appear visibly on the slide'
-    print('ok: "Proposed" status shown visibly')
 
 
 # --- 7. each lens "why" appears on the slide --------------------------------
@@ -411,7 +394,6 @@ def check_lens_why_text_present():
     for lens in LENSES:
         why = V4_SAMPLE['lenses'][lens]['why']
         assert why in all_text, f"lens '{lens}' why-text {why!r} missing from slide"
-    print('ok: every lens why-text appears on the slide')
 
 
 # --- 7b. culture tags: one outlined tag per culture factor, under the title,
@@ -452,12 +434,10 @@ def check_culture_tags_beside_proposed():
     slide, tags = _check_tags(fields, 'Proposed')
     tag = next(sh for sh in slide.shapes if sh.has_text_frame and sh.text_frame.text == 'PROPOSED')
     assert tags[0].top == tag.top and tags[0].left > tag.left + tag.width, 'culture tags must follow the PROPOSED tag in its row'
-    print('ok: culture tags sit in the PROPOSED row, after the PROPOSED tag')
 
 
 def check_culture_tags_when_triaged():
     _, tags = _check_tags(copy.deepcopy(V4_SAMPLE), 'Triaged')
-    print('ok: culture tags shown under the title when triaged')
 
 
 def check_longest_culture_tags_fit():
@@ -469,7 +449,6 @@ def check_longest_culture_tags_fit():
     assert tags[-1].left + tags[-1].width <= slide_w, 'the longest 3 culture tags run off the slide'
     for t in tags:
         assert len(t.text_frame.text) <= _estimate_capacity_chars(t.width, t.height, 12), f"tag {t.text_frame.text!r} overflows"
-    print('ok: the 3 longest culture factors fit as tags in one row')
 
 
 def check_no_culture_tags_when_empty():
@@ -477,7 +456,6 @@ def check_no_culture_tags_when_empty():
     fields['culture'] = []
     slide = Presentation(str(_build(fields))).slides[0]
     assert not _culture_tags(slide), 'empty culture must draw no culture tag'
-    print('ok: no culture tags when culture is empty')
 
 
 def check_refuses_more_than_3_culture():
@@ -529,7 +507,6 @@ def check_text_frames_fit_estimated_capacity():
         if len(text) > capacity:
             overflowing.append((sh.name, len(text), round(capacity)))
     assert not overflowing, f"text frames estimated to overflow (chars vs capacity): {overflowing}"
-    print('ok: no text frame estimated to overflow its box')
 
 
 # --- 8b. boundary-length owner/by/requester/function still fit -------------
@@ -561,33 +538,26 @@ def check_boundary_fields_still_fit_band_and_footer():
     assert not overflowing, (
         f"band/footer text estimated to overflow at the owner/by/requester/function budget boundary: {overflowing}"
     )
-    print('ok: decision band and footer box still fit at the field-length boundary')
+
+
+def main():
+    checks = [(n, f) for n, f in sorted(globals().items()) if n.startswith('check_')]
+    failed = []
+    for name, fn in checks:
+        try:
+            fn()
+        except Exception as e:
+            failed.append(name)
+            print(f'FAIL {name}: {type(e).__name__}: {e}')
+    total = len(checks)
+    if failed:
+        print(f'FAIL {len(failed)}/{total}: {", ".join(failed)}')
+        return 1
+    print(f'PASS {total}/{total}')
+    return 0
 
 
 if __name__ == '__main__':
-    check_refuses_v3_schema()
-    check_refuses_bad_total()
-    check_refuses_over_budget_field()
-    check_refuses_missing_source_for_evidence_marker()
-    check_refuses_over_budget_decision_owner()
-    check_refuses_over_budget_decision_by()
-    check_refuses_over_budget_requester()
-    check_refuses_over_budget_function()
-    check_refuses_more_than_3_culture()
-    check_refuses_bad_culture_shape()
-    _run_red('geometry guard', check_geometry)
-    _run_red('body text >=12pt floor', check_body_text_min_12pt)
-    _run_red('source_file hidden, only in notes', check_source_file_only_in_notes_never_visible)
-    _run_red('no picture inside content area', check_no_picture_inside_content_area)
-    _run_red('logo present and visible', check_logo_present_and_visible)
-    _run_red('decision band close to footer', check_decision_band_close_to_footer)
-    _run_red('column shapes stay close', check_column_shapes_stay_close)
-    _run_red('"Proposed" shown visibly', check_proposed_status_shown_visibly)
-    _run_red('lens why-text present', check_lens_why_text_present)
-    _run_red('culture tags beside PROPOSED', check_culture_tags_beside_proposed)
-    _run_red('culture tags when triaged', check_culture_tags_when_triaged)
-    _run_red('longest culture tags fit', check_longest_culture_tags_fit)
-    _run_red('no culture tags when empty', check_no_culture_tags_when_empty)
-    _run_red('estimated overflow', check_text_frames_fit_estimated_capacity)
-    _run_red('boundary fields fit band/footer', check_boundary_fields_still_fit_band_and_footer)
-    print('all checks ran (RED expected on commit 5e613a8, before the v4 build lands)')
+    sys.exit(main())
+
+
