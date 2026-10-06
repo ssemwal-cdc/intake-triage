@@ -1,6 +1,6 @@
 ---
 name: request-slide
-description: Use when the user asks to "make the management slide for <submission>", wants a "one-slider for request ...", or says "request slide". Builds a one-slide management summary (.pptx) for one intake-triage submission. The slide argues for a decision; it never just reprints the intake form.
+description: Use when the user asks to "make the management slide" for a submission, wants a "one-slider for request ...", or says "request slide". Builds a one-slide management summary (.pptx) for one intake-triage submission. The slide argues for a decision; it never just reprints the intake form.
 ---
 
 # request-slide
@@ -25,6 +25,8 @@ give you.
    ```
    gh api repos/ssemwal-cdc/intake-submissions/contents/submissions/<name> -H "Accept: application/vnd.github.raw"
    ```
+   If `gh` is not available (for example in Claude chat), ask the owner to
+   attach or paste the submission JSON from the private repo.
    Parse the JSON. If `triage` is `null`, continue with `status` set to
    `"Proposed"` (see step 5).
 
@@ -140,6 +142,9 @@ Master path, in order:
 2. The `INTAKE_SLIDE_MASTER` environment variable.
 3. The default: the owner's OneDrive copy, at
    `C:\Users\ShivamSemwal\OneDrive - Compass Datacenters, LLC\Downloads 16 Pro\Template_Powerpoint_Master_V2.1_03-27-25.pptx`.
+4. None of these exists (for example in Claude chat): ask the owner to
+   attach the master to the chat, and pass the attached file's path with
+   `--master`. Never build on any other template.
 
 `.gitignore` blocks any `*master*.pptx` or `Template_Powerpoint_Master*.pptx`
 under `skills/request-slide/`. The master itself, and any slide built from
