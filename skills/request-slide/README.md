@@ -29,6 +29,18 @@ The master is confidential. This repo is public. `.gitignore` blocks any
 nor a full slide deck built from it can land here. Only
 `examples/sample.json` is committed; it holds fields, not slide content.
 
+## Checks
+
+Run the slide checks before any slide PR merges. CI does not run them,
+because the master is confidential. From `skills/request-slide/`, with
+`INTAKE_SLIDE_MASTER` set if the master is not at its default path:
+
+```
+python template/test_build_slide.py
+```
+
+It prints PASS or FAIL, and exits 1 on any failure.
+
 ## Org rule
 
 A deck going outside Compass, to any external audience, must go to

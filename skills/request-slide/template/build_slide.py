@@ -56,7 +56,7 @@ STATUSES = {'Triaged', 'Proposed'}
 REQUIRED_KEYS = {
     'title', 'disposition', 'disposition_plain', 'problem', 'evidence',
     'lenses', 'total', 'status', 'decision', 'requester', 'function',
-    'submitted', 'notes_sources', 'source_file',
+    'submitted', 'notes_sources', 'source_file', 'culture',
 }
 # v3 schema keys: if any of these show up, the caller is passing the old
 # intake-form-shaped fields, not the v4 decision-argument schema.
@@ -140,6 +140,11 @@ def check_budgets(f):
         errors.append(f"'requester' is {word_count(f['requester'])} words, budget is 5")
     if word_count(f['function']) > 5:
         errors.append(f"'function' is {word_count(f['function'])} words, budget is 5")
+    culture = f['culture']
+    if not isinstance(culture, list) or not all(isinstance(c, str) and c.strip() for c in culture):
+        errors.append("'culture' must be a list of non-blank strings ([] if none)")
+    elif len(culture) > 3:
+        errors.append(f"'culture' has {len(culture)} items, the limit is 3")
 
     if errors:
         raise ValueError('Slide text over budget, shorten before building:\n' + '\n'.join(' - ' + e for e in errors))
@@ -322,13 +327,28 @@ def build(fields, out_path, master_path=None):
     drop_swoosh_pictures(slide)  # background art only; the layout's logo stays
     clear_logo_of_content_area(slide, title_top + title_height)
 
+    # --- Tag row under the title: the PROPOSED tag (solid), then one
+    # outlined tag per culture factor. No row when there is neither. ---
     body_top = title_top + title_height + GAP
+    tag_h, tag_gap, tag_x = 260000, 120000, margin
     if fields['status'] == 'Proposed':
-        # A small tag under the title, never in the top-right corner where
-        # the (now-dropped) logo used to sit.
-        tag_w, tag_h = 1500000, 260000
-        tag = add_rect(slide, margin, body_top, tag_w, tag_h, ORANGE)
+        tag = add_rect(slide, tag_x, body_top, 1500000, tag_h, ORANGE)
         set_text(tag.text_frame, [('PROPOSED', WHITE, True)], 12, align=PP_ALIGN.CENTER)
+        tag_x += 1500000 + tag_gap
+    for i, name in enumerate(fields['culture']):
+        # Width from the same chars-per-inch model as est_h(), plus room for the frame's own insets.
+        w = round(len(name) * 12 * 0.62 / 96 * EMU_PER_INCH) + 2 * 91440 + 120000
+        if tag_x + w > margin + content_w:
+            raise ValueError(f"culture tags do not fit in one row at {name!r}; show fewer factors")
+        ctag = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Emu(tag_x), Emu(body_top), Emu(w), Emu(tag_h))
+        ctag.name = f'Culture tag {i + 1}'
+        ctag.fill.background()
+        ctag.line.color.rgb = ORANGE
+        ctag.line.width = Pt(1)
+        ctag.shadow.inherit = False
+        set_text(ctag.text_frame, [(name, ORANGE_SMALL, False)], 12, align=PP_ALIGN.CENTER, word_wrap=False)
+        tag_x += w + tag_gap
+    if tag_x > margin:
         body_top += tag_h + GAP
 
     # --- Footer row, fixed at the bottom, beside the master's own footer ---

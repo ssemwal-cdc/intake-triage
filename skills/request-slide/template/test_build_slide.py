@@ -1,6 +1,10 @@
-"""Self-check for build_slide.py (v4 schema): no framework, just asserts.
+"""Checks for build_slide.py (v4 schema): stdlib asserts, no framework.
 
 Run: python template/test_build_slide.py  (from skills/request-slide/)
+Needs INTAKE_SLIDE_MASTER set to the local master .pptx.
+Each check_* function is one check; a failed assert or any exception fails it.
+Prints one line per failure and a verdict (PASS n/n or FAIL k/n: names).
+Exit code is 1 on any failure, else 0.
 
 Renamed from selfcheck_build_slide.py -- same file, test-naming convention
 only (so the repo's test-scope guard recognizes it as a test path).
@@ -13,7 +17,8 @@ v4 input schema (see request-slide-v4-checks brief):
   "total": int (== sum of lens scores), "status": "Triaged"|"Proposed",
   "decision": {"ask": str (<=20 words), "owner": str, "by": str},
   "requester": str, "function": str, "submitted": "YYYY-MM-DD",
-  "notes_sources": [{"n", "title", "link", "date"}, ...], "source_file": str }
+  "notes_sources": [{"n", "title", "link", "date"}, ...], "source_file": str,
+  "culture": [str, ...] (the submission's cultureFactors, at most 3, may be empty) }
 """
 import copy
 import json
@@ -55,6 +60,7 @@ V4_SAMPLE = {
         {"n": 2, "title": "System list, sample", "link": "n/a", "date": "2026-10-05"},
     ],
     "source_file": "2026-09-30-entity-level-tax-allocation-check-sample.json",
+    "culture": ["Poka Yoke", "Power of Incremental"],
 }
 
 V3_SAMPLE = {
@@ -93,21 +99,8 @@ def _expect_value_error(fields, needle, label):
         _build(fields)
     except ValueError as e:
         assert needle.lower() in str(e).lower(), f"{label}: ValueError text {e!r} missing {needle!r}"
-        print(f'ok (RED as expected): {label} refused -- {e}')
         return
-    except Exception as e:  # pragma: no cover - diagnostic path for this red run
-        print(f'RED (wrong reason, pre-v4 code): {label} raised {type(e).__name__}: {e}')
-        return
-    print(f'RED (not refused): {label} built without error -- v4 refusal not implemented')
-
-
-def _run_red(label, fn):
-    """Runs one post-refusal check and reports RED instead of crashing the
-    run, since the v4 build does not exist yet on this commit (5e613a8)."""
-    try:
-        fn()
-    except Exception as e:
-        print(f'RED (expected until v4 build lands): {label} -- {type(e).__name__}: {e}')
+    raise AssertionError(f"{label}: built without error, expected ValueError with {needle!r}")
 
 
 # --- 1. schema / value refusals -------------------------------------------
@@ -196,7 +189,6 @@ def check_geometry():
             assert not _rects_overlap(rect_a, rect_b), (
                 f"shapes '{name_a}' {rect_a} and '{name_b}' {rect_b} overlap"
             )
-    print(f'ok: {len(shapes)} content shapes, none overlap, all inside the slide')
 
 
 # --- 3. font sizes -----------------------------------------------------------
@@ -219,7 +211,6 @@ def check_body_text_min_12pt():
                 if pt < floor:
                     small_runs.append((sh.name, r.text, pt, floor))
     assert not small_runs, f"text below its size floor: {small_runs}"
-    print('ok: no body text below 12pt, footer text at or above 9pt')
 
 
 # --- 4. no ".json" in visible text; source file only in notes --------------
@@ -233,7 +224,6 @@ def check_source_file_only_in_notes_never_visible():
             raise AssertionError(f"visible shape '{sh.name}' shows .json: {sh.text_frame.text!r}")
     notes_text = slide.notes_slide.notes_text_frame.text
     assert V4_SAMPLE['source_file'] in notes_text, 'source_file must appear in speaker notes'
-    print('ok: no visible ".json", source_file only in speaker notes')
 
 
 # --- 5. no picture inside the content area; a full-slide background art ----
@@ -282,7 +272,6 @@ def check_no_picture_inside_content_area():
     assert not bad, (
         f"picture(s) fall inside the content area (below the title, above the footer): {bad}"
     )
-    print('ok: no picture (background art or otherwise) inside the content area')
 
 
 # --- 5b. the Compass logo must be present on the slide, and visible --------
@@ -308,7 +297,6 @@ def check_logo_present_and_visible():
     content_rects = [(sh.name, (sh.left, sh.top, sh.width, sh.height)) for sh in _content_shapes(slide)]
     coverers = [name for name, rect in content_rects if _rects_overlap(rect, logo_rect)]
     assert not coverers, f"logo {logo.name!r} is covered by content shape(s): {coverers}"
-    print('ok: Compass logo present and not covered by any content shape')
 
 
 # --- 5c. decision band sits close above the footer row, no empty gap ------
@@ -339,7 +327,6 @@ def check_decision_band_close_to_footer():
     assert 0 <= gap_in <= FOOTER_GAP_MAX_IN, (
         f"decision band bottom is {gap_in:.2f}in above the footer row, budget is {FOOTER_GAP_MAX_IN}in"
     )
-    print(f'ok: decision band sits {gap_in:.2f}in above the footer row')
 
 
 # --- 5d. within each column, consecutive content shapes stay close --------
@@ -383,7 +370,6 @@ def check_column_shapes_stay_close():
     assert not bad, (
         f"gap(s) over {MAX_INTRA_COLUMN_GAP_IN}in between consecutive shapes in a column: {bad}"
     )
-    print('ok: no column has a gap over 0.5in between consecutive shapes')
 
 
 # --- 6. "Proposed" must be visible when status is Proposed ------------------
@@ -396,7 +382,6 @@ def check_proposed_status_shown_visibly():
     slide = prs.slides[0]
     all_text = ' '.join(sh.text_frame.text for sh in slide.shapes if sh.has_text_frame)
     assert 'proposed' in all_text.lower(), 'status "Proposed" must appear visibly on the slide'
-    print('ok: "Proposed" status shown visibly')
 
 
 # --- 7. each lens "why" appears on the slide --------------------------------
@@ -409,7 +394,110 @@ def check_lens_why_text_present():
     for lens in LENSES:
         why = V4_SAMPLE['lenses'][lens]['why']
         assert why in all_text, f"lens '{lens}' why-text {why!r} missing from slide"
-    print('ok: every lens why-text appears on the slide')
+
+
+# --- 7b. culture tags: one outlined tag per culture factor, under the title,
+# in the same row as the PROPOSED tag. Never a sentence or a line of body text.
+
+LONGEST_CULTURE = ['Lowest Total Cost of Ownership', 'Failure on the Path to Success', 'Crawl, Walk, Never Run']
+
+
+def _culture_tags(slide):
+    return [sh for sh in slide.shapes if sh.name.startswith('Culture tag')]
+
+
+def _check_tags(fields, label):
+    slide = Presentation(str(_build(fields))).slides[0]
+    tags = _culture_tags(slide)
+    assert [t.text_frame.text for t in tags] == fields['culture'], (
+        f"{label}: culture tags {[t.text_frame.text for t in tags]} != {fields['culture']}"
+    )
+    title = next(sh for sh in slide.placeholders if sh.placeholder_format.idx == 0)
+    heading = next(sh for sh in slide.shapes if sh.has_text_frame and sh.text_frame.text == 'THE PROBLEM')
+    row_tops = {t.top for t in tags}
+    assert len(row_tops) == 1, f"{label}: culture tags are not in one row: {row_tops}"
+    top = row_tops.pop()
+    assert title.top + title.height <= top and top + tags[0].height <= heading.top, (
+        f"{label}: culture tags must sit between the title and the problem heading"
+    )
+    for a, b in zip(tags, tags[1:]):
+        assert a.left + a.width < b.left, f"{label}: culture tags overlap or are out of order"
+    assert 'Culture:' not in ' '.join(sh.text_frame.text for sh in slide.shapes if sh.has_text_frame), (
+        f"{label}: the old culture text line is still drawn"
+    )
+    return slide, tags
+
+
+def check_culture_tags_beside_proposed():
+    fields = copy.deepcopy(V4_SAMPLE)
+    fields['status'] = 'Proposed'
+    slide, tags = _check_tags(fields, 'Proposed')
+    tag = next(sh for sh in slide.shapes if sh.has_text_frame and sh.text_frame.text == 'PROPOSED')
+    assert tags[0].top == tag.top and tags[0].left > tag.left + tag.width, 'culture tags must follow the PROPOSED tag in its row'
+
+
+def check_culture_tags_when_triaged():
+    _, tags = _check_tags(copy.deepcopy(V4_SAMPLE), 'Triaged')
+
+
+def check_longest_culture_tags_fit():
+    fields = copy.deepcopy(V4_SAMPLE)
+    fields['status'] = 'Proposed'
+    fields['culture'] = list(LONGEST_CULTURE)
+    slide, tags = _check_tags(fields, 'longest 3')
+    slide_w = slide.part.package.presentation_part.presentation.slide_width
+    title = next(sh for sh in slide.placeholders if sh.placeholder_format.idx == 0)
+    right_edge = slide_w - title.left  # content area: title's left margin, mirrored on the right
+    assert tags[-1].left + tags[-1].width <= right_edge, 'the longest 3 culture tags run past the content area'
+    try:
+        from PIL import ImageFont
+        font = ImageFont.truetype('C:/Windows/Fonts/arial.ttf', 16)  # 12pt at 96 dpi = 16px
+    except (ImportError, OSError) as e:
+        print(f'  SKIP real text width: PIL or Arial missing ({e})')
+        font = None
+    for t in tags:
+        assert len(t.text_frame.text) <= _estimate_capacity_chars(t.width, t.height, 12), f"tag {t.text_frame.text!r} overflows"
+        if font:
+            text_emu = font.getlength(t.text_frame.text) / 96 * 914400
+            tf = t.text_frame
+            need = text_emu + tf.margin_left + tf.margin_right
+            assert t.width >= need, f"tag {tf.text!r} is {need - t.width:.0f} EMU too narrow for its text"
+
+
+def check_tag_row_that_does_not_fit_is_refused():
+    fields = copy.deepcopy(V4_SAMPLE)
+    fields['culture'] = ['A free-text culture name that is far too long to fit'] * 3
+    _expect_value_error(fields, 'do not fit', 'three long culture names')
+
+
+def check_empty_culture_draws_no_tag_row():
+    def heading_top(culture):
+        fields = copy.deepcopy(V4_SAMPLE)
+        fields['culture'] = culture
+        slide = Presentation(str(_build(fields))).slides[0]
+        return next(sh for sh in slide.shapes if sh.has_text_frame and sh.text_frame.text == 'THE PROBLEM').top
+    # A row of tags pushes the content down; an empty list must not leave that row's space behind.
+    assert heading_top([]) < heading_top(['Poka Yoke']), 'empty culture still reserves space for a tag row'
+
+
+def check_no_culture_tags_when_empty():
+    fields = copy.deepcopy(V4_SAMPLE)
+    fields['culture'] = []
+    slide = Presentation(str(_build(fields))).slides[0]
+    assert not _culture_tags(slide), 'empty culture must draw no culture tag'
+
+
+def check_refuses_more_than_3_culture():
+    fields = copy.deepcopy(V4_SAMPLE)
+    fields['culture'] = ['Poka Yoke', 'Pareto Principle', 'Built to Last', 'Any Prototype']
+    _expect_value_error(fields, 'culture', 'culture with 4 items (limit 3)')
+
+
+def check_refuses_bad_culture_shape():
+    for bad, label in (("Poka Yoke", 'a string'), (['', ' '], 'blank items'), (None, 'None'), ([1, 2], 'non-strings')):
+        fields = copy.deepcopy(V4_SAMPLE)
+        fields['culture'] = bad
+        _expect_value_error(fields, 'culture', f'culture as {label}')
 
 
 # --- 8. estimated overflow ---------------------------------------------------
@@ -448,7 +536,6 @@ def check_text_frames_fit_estimated_capacity():
         if len(text) > capacity:
             overflowing.append((sh.name, len(text), round(capacity)))
     assert not overflowing, f"text frames estimated to overflow (chars vs capacity): {overflowing}"
-    print('ok: no text frame estimated to overflow its box')
 
 
 # --- 8b. boundary-length owner/by/requester/function still fit -------------
@@ -480,27 +567,26 @@ def check_boundary_fields_still_fit_band_and_footer():
     assert not overflowing, (
         f"band/footer text estimated to overflow at the owner/by/requester/function budget boundary: {overflowing}"
     )
-    print('ok: decision band and footer box still fit at the field-length boundary')
+
+
+def main():
+    checks = [(n, f) for n, f in sorted(globals().items()) if n.startswith('check_')]
+    failed = []
+    for name, fn in checks:
+        try:
+            fn()
+        except Exception as e:
+            failed.append(name)
+            print(f'FAIL {name}: {type(e).__name__}: {e}')
+    total = len(checks)
+    if failed:
+        print(f'FAIL {len(failed)}/{total}: {", ".join(failed)}')
+        return 1
+    print(f'PASS {total}/{total}')
+    return 0
 
 
 if __name__ == '__main__':
-    check_refuses_v3_schema()
-    check_refuses_bad_total()
-    check_refuses_over_budget_field()
-    check_refuses_missing_source_for_evidence_marker()
-    check_refuses_over_budget_decision_owner()
-    check_refuses_over_budget_decision_by()
-    check_refuses_over_budget_requester()
-    check_refuses_over_budget_function()
-    _run_red('geometry guard', check_geometry)
-    _run_red('body text >=12pt floor', check_body_text_min_12pt)
-    _run_red('source_file hidden, only in notes', check_source_file_only_in_notes_never_visible)
-    _run_red('no picture inside content area', check_no_picture_inside_content_area)
-    _run_red('logo present and visible', check_logo_present_and_visible)
-    _run_red('decision band close to footer', check_decision_band_close_to_footer)
-    _run_red('column shapes stay close', check_column_shapes_stay_close)
-    _run_red('"Proposed" shown visibly', check_proposed_status_shown_visibly)
-    _run_red('lens why-text present', check_lens_why_text_present)
-    _run_red('estimated overflow', check_text_frames_fit_estimated_capacity)
-    _run_red('boundary fields fit band/footer', check_boundary_fields_still_fit_band_and_footer)
-    print('all checks ran (RED expected on commit 5e613a8, before the v4 build lands)')
+    sys.exit(main())
+
+

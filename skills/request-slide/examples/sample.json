@@ -27,5 +27,6 @@
     {"n": 1, "title": "Sample source, no SharePoint/Teams search run", "link": "n/a", "date": "2026-10-05"},
     {"n": 2, "title": "Sample source, no SharePoint/Teams search run", "link": "n/a", "date": "2026-10-05"}
   ],
-  "source_file": "2026-09-30-entity-level-tax-allocation-check-sample.json"
+  "source_file": "2026-09-30-entity-level-tax-allocation-check-sample.json",
+  "culture": ["Poka Yoke", "Power of Incremental"]
 }
