@@ -143,8 +143,8 @@ def check_budgets(f):
     culture = f['culture']
     if not isinstance(culture, list) or not all(isinstance(c, str) and c.strip() for c in culture):
         errors.append("'culture' must be a list of non-blank strings ([] if none)")
-    elif (culture_words := sum(word_count(c) for c in culture)) > 12:
-        errors.append(f"'culture' total is {culture_words} words, budget is 12")
+    elif len(culture) > 3:
+        errors.append(f"'culture' has {len(culture)} items, the limit is 3")
 
     if errors:
         raise ValueError('Slide text over budget, shorten before building:\n' + '\n'.join(' - ' + e for e in errors))
@@ -327,13 +327,28 @@ def build(fields, out_path, master_path=None):
     drop_swoosh_pictures(slide)  # background art only; the layout's logo stays
     clear_logo_of_content_area(slide, title_top + title_height)
 
+    # --- Tag row under the title: the PROPOSED tag (solid), then one
+    # outlined tag per culture factor. No row when there is neither. ---
     body_top = title_top + title_height + GAP
+    tag_h, tag_gap, tag_x = 260000, 120000, margin
     if fields['status'] == 'Proposed':
-        # A small tag under the title, never in the top-right corner where
-        # the (now-dropped) logo used to sit.
-        tag_w, tag_h = 1500000, 260000
-        tag = add_rect(slide, margin, body_top, tag_w, tag_h, ORANGE)
+        tag = add_rect(slide, tag_x, body_top, 1500000, tag_h, ORANGE)
         set_text(tag.text_frame, [('PROPOSED', WHITE, True)], 12, align=PP_ALIGN.CENTER)
+        tag_x += 1500000 + tag_gap
+    for i, name in enumerate(fields['culture']):
+        # Width from the same chars-per-inch model as est_h(), plus room for the frame's own insets.
+        w = round(len(name) * 12 * 0.62 / 96 * EMU_PER_INCH) + 2 * 91440 + 120000
+        if tag_x + w > margin + content_w:
+            raise ValueError(f"culture tags do not fit in one row at {name!r}; show fewer factors")
+        ctag = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Emu(tag_x), Emu(body_top), Emu(w), Emu(tag_h))
+        ctag.name = f'Culture tag {i + 1}'
+        ctag.fill.background()
+        ctag.line.color.rgb = ORANGE
+        ctag.line.width = Pt(1)
+        ctag.shadow.inherit = False
+        set_text(ctag.text_frame, [(name, ORANGE_SMALL, False)], 12, align=PP_ALIGN.CENTER, word_wrap=False)
+        tag_x += w + tag_gap
+    if tag_x > margin:
         body_top += tag_h + GAP
 
     # --- Footer row, fixed at the bottom, beside the master's own footer ---
@@ -388,15 +403,11 @@ def build(fields, out_path, master_path=None):
     # group, centering it between the tag and the band, instead of being
     # stretched into the gaps.
     heading_h = 230000
-    # The submission's culture factors, as one 12pt line under the problem;
-    # no line at all when the submission ticks none.
-    culture_text = ' · '.join(fields['culture'])
-    culture_h = est_h('Culture: ' + culture_text, left_w, 12) if culture_text else 0
 
     def left_natural_height(problem_size):
         p_h = est_h(fields['problem'], left_w, problem_size)
         e_h = sum(est_h(b, left_w, 14) for b in fields['evidence'])
-        return p_h, e_h, 2 * (heading_h + HEADING_GAP) + p_h + culture_h + SECTION_GAP + e_h
+        return p_h, e_h, 2 * (heading_h + HEADING_GAP) + p_h + SECTION_GAP + e_h
 
     problem_size = 20
     problem_h, evidence_h, left_natural = left_natural_height(problem_size)
@@ -409,13 +420,7 @@ def build(fields, out_path, master_path=None):
     cursor += heading(slide, left_x, cursor, left_w, 'THE PROBLEM') + HEADING_GAP
     problem_box = add_textbox(slide, left_x, cursor, left_w, problem_h)
     set_text(problem_box.text_frame, [(fields['problem'], SLATE, False)], problem_size, anchor=MSO_ANCHOR.TOP)
-    cursor += problem_h
-    if culture_text:
-        culture_box = add_textbox(slide, left_x, cursor, left_w, culture_h, name='Culture line')
-        set_text(culture_box.text_frame, [('Culture: ', ORANGE_SMALL, True), (culture_text, SLATE, False)], 12,
-                 anchor=MSO_ANCHOR.TOP)
-        cursor += culture_h
-    cursor += SECTION_GAP
+    cursor += problem_h + SECTION_GAP
 
     cursor += heading(slide, left_x, cursor, left_w, 'EVIDENCE') + HEADING_GAP
     evidence_box = add_textbox(slide, left_x, cursor, left_w, evidence_h)

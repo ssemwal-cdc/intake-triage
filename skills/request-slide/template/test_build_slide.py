@@ -14,7 +14,7 @@ v4 input schema (see request-slide-v4-checks brief):
   "decision": {"ask": str (<=20 words), "owner": str, "by": str},
   "requester": str, "function": str, "submitted": "YYYY-MM-DD",
   "notes_sources": [{"n", "title", "link", "date"}, ...], "source_file": str,
-  "culture": [str, ...] (the submission's cultureFactors, <=12 words total, may be empty) }
+  "culture": [str, ...] (the submission's cultureFactors, at most 3, may be empty) }
 """
 import copy
 import json
@@ -414,32 +414,76 @@ def check_lens_why_text_present():
     print('ok: every lens why-text appears on the slide')
 
 
-# --- 7b. culture line: shown when the submission ticks culture factors ----
+# --- 7b. culture tags: one outlined tag per culture factor, under the title,
+# in the same row as the PROPOSED tag. Never a sentence or a line of body text.
 
-def _slide_text(fields):
+LONGEST_CULTURE = ['Lowest Total Cost of Ownership', 'Failure on the Path to Success', 'Crawl, Walk, Never Run']
+
+
+def _culture_tags(slide):
+    return [sh for sh in slide.shapes if sh.name.startswith('Culture tag')]
+
+
+def _check_tags(fields, label):
     slide = Presentation(str(_build(fields))).slides[0]
-    return ' '.join(sh.text_frame.text for sh in slide.shapes if sh.has_text_frame)
+    tags = _culture_tags(slide)
+    assert [t.text_frame.text for t in tags] == fields['culture'], (
+        f"{label}: culture tags {[t.text_frame.text for t in tags]} != {fields['culture']}"
+    )
+    title = next(sh for sh in slide.placeholders if sh.placeholder_format.idx == 0)
+    heading = next(sh for sh in slide.shapes if sh.has_text_frame and sh.text_frame.text == 'THE PROBLEM')
+    row_tops = {t.top for t in tags}
+    assert len(row_tops) == 1, f"{label}: culture tags are not in one row: {row_tops}"
+    top = row_tops.pop()
+    assert title.top + title.height <= top and top + tags[0].height <= heading.top, (
+        f"{label}: culture tags must sit between the title and the problem heading"
+    )
+    for a, b in zip(tags, tags[1:]):
+        assert a.left + a.width < b.left, f"{label}: culture tags overlap or are out of order"
+    assert 'Culture:' not in ' '.join(sh.text_frame.text for sh in slide.shapes if sh.has_text_frame), (
+        f"{label}: the old culture text line is still drawn"
+    )
+    return slide, tags
 
 
-def check_culture_line_shown():
-    text = _slide_text(copy.deepcopy(V4_SAMPLE))
-    assert 'Culture:' in text, 'no "Culture:" line on the slide'
-    for item in V4_SAMPLE['culture']:
-        assert item in text, f"culture item {item!r} missing from slide"
-    print('ok: culture line shows every culture item')
+def check_culture_tags_beside_proposed():
+    fields = copy.deepcopy(V4_SAMPLE)
+    fields['status'] = 'Proposed'
+    slide, tags = _check_tags(fields, 'Proposed')
+    tag = next(sh for sh in slide.shapes if sh.has_text_frame and sh.text_frame.text == 'PROPOSED')
+    assert tags[0].top == tag.top and tags[0].left > tag.left + tag.width, 'culture tags must follow the PROPOSED tag in its row'
+    print('ok: culture tags sit in the PROPOSED row, after the PROPOSED tag')
 
 
-def check_no_culture_line_when_empty():
+def check_culture_tags_when_triaged():
+    _, tags = _check_tags(copy.deepcopy(V4_SAMPLE), 'Triaged')
+    print('ok: culture tags shown under the title when triaged')
+
+
+def check_longest_culture_tags_fit():
+    fields = copy.deepcopy(V4_SAMPLE)
+    fields['status'] = 'Proposed'
+    fields['culture'] = list(LONGEST_CULTURE)
+    slide, tags = _check_tags(fields, 'longest 3')
+    slide_w = slide.part.package.presentation_part.presentation.slide_width
+    assert tags[-1].left + tags[-1].width <= slide_w, 'the longest 3 culture tags run off the slide'
+    for t in tags:
+        assert len(t.text_frame.text) <= _estimate_capacity_chars(t.width, t.height, 12), f"tag {t.text_frame.text!r} overflows"
+    print('ok: the 3 longest culture factors fit as tags in one row')
+
+
+def check_no_culture_tags_when_empty():
     fields = copy.deepcopy(V4_SAMPLE)
     fields['culture'] = []
-    assert 'Culture:' not in _slide_text(fields), 'empty culture must draw no "Culture:" line'
-    print('ok: no culture line when culture is empty')
+    slide = Presentation(str(_build(fields))).slides[0]
+    assert not _culture_tags(slide), 'empty culture must draw no culture tag'
+    print('ok: no culture tags when culture is empty')
 
 
-def check_refuses_over_budget_culture():
+def check_refuses_more_than_3_culture():
     fields = copy.deepcopy(V4_SAMPLE)
-    fields['culture'] = ['Lowest Total Cost of Ownership', 'Failure on the Path to Success', 'Built to Last']
-    _expect_value_error(fields, 'culture', 'over-budget culture (14 words, budget 12)')
+    fields['culture'] = ['Poka Yoke', 'Pareto Principle', 'Built to Last', 'Any Prototype']
+    _expect_value_error(fields, 'culture', 'culture with 4 items (limit 3)')
 
 
 def check_refuses_bad_culture_shape():
@@ -529,7 +573,7 @@ if __name__ == '__main__':
     check_refuses_over_budget_decision_by()
     check_refuses_over_budget_requester()
     check_refuses_over_budget_function()
-    check_refuses_over_budget_culture()
+    check_refuses_more_than_3_culture()
     check_refuses_bad_culture_shape()
     _run_red('geometry guard', check_geometry)
     _run_red('body text >=12pt floor', check_body_text_min_12pt)
@@ -540,8 +584,10 @@ if __name__ == '__main__':
     _run_red('column shapes stay close', check_column_shapes_stay_close)
     _run_red('"Proposed" shown visibly', check_proposed_status_shown_visibly)
     _run_red('lens why-text present', check_lens_why_text_present)
-    _run_red('culture line shown', check_culture_line_shown)
-    _run_red('no culture line when empty', check_no_culture_line_when_empty)
+    _run_red('culture tags beside PROPOSED', check_culture_tags_beside_proposed)
+    _run_red('culture tags when triaged', check_culture_tags_when_triaged)
+    _run_red('longest culture tags fit', check_longest_culture_tags_fit)
+    _run_red('no culture tags when empty', check_no_culture_tags_when_empty)
     _run_red('estimated overflow', check_text_frames_fit_estimated_capacity)
     _run_red('boundary fields fit band/footer', check_boundary_fields_still_fit_band_and_footer)
     print('all checks ran (RED expected on commit 5e613a8, before the v4 build lands)')
