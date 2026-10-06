@@ -17,6 +17,17 @@ cp -r skills/request-slide ~/.claude/skills/request-slide
 - `python-pptx`. Install with `pip install python-pptx`.
 - `gh` CLI, authenticated for `ssemwal-cdc/intake-submissions`.
 - The Microsoft 365 connector, for SharePoint and Teams context searches.
+- A local copy of the official Compass master,
+  `Template_Powerpoint_Master_V2.1_03-27-25.pptx`. The builder reads it
+  read-only. It defaults to the owner's OneDrive copy. Point it elsewhere
+  with `--master <path>` or the `INTAKE_SLIDE_MASTER` environment variable.
+
+## The master is never committed
+
+The master is confidential. This repo is public. `.gitignore` blocks any
+`*master*.pptx` file under `skills/request-slide/`, so neither the master
+nor a full slide deck built from it can land here. Only
+`examples/sample.json` is committed; it holds fields, not slide content.
 
 ## Org rule
 

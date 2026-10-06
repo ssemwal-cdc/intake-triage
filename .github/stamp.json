@@ -1,0 +1,20 @@
+{
+  "defaultBranch": "main",
+  "kinds": [
+    {
+      "id": "decision",
+      "folder": "docs/decisions",
+      "filePattern": "D[0-9]*.md",
+      "prefix": "D",
+      "idTemplate": "{prefix}{n}",
+      "pendingRegex": "^id:[ \\t]*pending[ \\t]*$",
+      "location": "frontmatter"
+    }
+  ],
+  "merge": {
+    "method": "merge",
+    "requiredChecks": ["e2e"],
+    "deadlineMinutes": 20,
+    "deleteBranch": true
+  }
+}
