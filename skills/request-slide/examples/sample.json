@@ -1,26 +1,31 @@
 {
-  "title_name": "Entity-level tax allocation check",
+  "title": "Automate the entity-tax recheck so close never misses a step",
   "disposition": "Small rock",
-  "ask": "Automate the hand re-check of entity-level tax allocation each close, so a step is never missed under deadline pressure.",
-  "who_how_often": "Tax team, once per close cycle, per project.",
-  "triage": {
-    "cost": -1,
-    "risk": 1,
-    "time": 2,
-    "benefit": 2,
-    "total": 4,
-    "fit": "Yes, data exists",
-    "decision_date": "2026-10-15",
-    "note": "Fits within a month; owner confirmed."
-  },
-  "context_bullets": [
+  "disposition_plain": "Fits within a month",
+  "problem": "Tax re-checks entity-level allocation by hand every close; the check is easy to miss under deadline pressure (sample).",
+  "evidence": [
     "Entity allocation is re-checked by hand every close today (sample). [1]",
     "Data lives in NetSuite and Excel models, not one system (sample). [2]"
   ],
-  "footer_source": "2026-09-30-entity-level-tax-allocation-check-sample.json",
-  "footer_date": "2026-10-05",
+  "lenses": {
+    "cost": {"score": -1, "why": "Build time for the check (sample)"},
+    "risk": {"score": 1, "why": "Fewer missed recodes at close (sample)"},
+    "time": {"score": 2, "why": "Removes a manual close step (sample)"},
+    "benefit": {"score": 2, "why": "Allocation is correct the first time (sample)"}
+  },
+  "total": 4,
+  "status": "Triaged",
+  "decision": {
+    "ask": "Whether to approve the automated recheck for this close cycle (sample).",
+    "owner": "Tax team",
+    "by": "2026-10-15"
+  },
+  "requester": "Sample requester",
+  "function": "Tax",
+  "submitted": "2026-09-30",
   "notes_sources": [
-    {"n": 1, "title": "Sample source, no SharePoint/Teams search run", "link": "n/a", "date": "2026-10-05", "unverified": true},
-    {"n": 2, "title": "Sample source, no SharePoint/Teams search run", "link": "n/a", "date": "2026-10-05", "unverified": true}
-  ]
+    {"n": 1, "title": "Sample source, no SharePoint/Teams search run", "link": "n/a", "date": "2026-10-05"},
+    {"n": 2, "title": "Sample source, no SharePoint/Teams search run", "link": "n/a", "date": "2026-10-05"}
+  ],
+  "source_file": "2026-09-30-entity-level-tax-allocation-check-sample.json"
 }

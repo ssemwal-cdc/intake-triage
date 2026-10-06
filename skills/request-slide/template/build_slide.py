@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-"""Fixed-template management slide builder.
+"""Fixed-template management slide builder (v4).
 
 Builds one slide inside the official Compass master
 (Template_Powerpoint_Master_V2.1_03-27-25.pptx): its "Business Lens - White"
-slide, trimmed to the single slide, title reused as-is. The master's own
-Cost/Risk/Time/Benefit tables are dropped (they carry "-- / ++" scale
-markers and empty cells meant for a full-page Business Lens slide, not a
-compact score row); five plain score tiles are drawn instead, in the
-brief's own colors. Ask / who / triage / context are plain text boxes. The
-master's own footer, tagline and logo come from its layout; this script
-never draws its own band or logo.
+slide, trimmed to the single slide. The master's own Cost/Risk/Time/Benefit
+tables are dropped; a compact scorecard is drawn instead. The slide argues
+for a decision: a recommendation-sentence title, the problem and its
+evidence as the main content, a compact scorecard (not five big tiles), and
+a bottom decision band. The master's own footer, tagline and logo come from
+its layout; this script never draws its own band or logo for those.
 
 Usage: python build_slide.py <fields.json> <out.pptx> [--master <path>]
 
@@ -18,13 +17,16 @@ the owner's OneDrive copy (default below). It is opened read-only; nothing
 is ever written back to it, and it must never be committed to this repo
 (see .gitignore).
 
-Word budgets are enforced here (not left to the caller) so a slide can never
-ship with overflow text silently truncated by auto-shrink: this script fails
-loudly instead. The skill must shorten text itself before calling this.
+Word budgets and schema shape are enforced here (not left to the caller) so
+a slide can never ship with overflow text silently truncated by
+auto-shrink, or with stale (v3) fields that silently build a wrong slide:
+this script fails loudly instead. The skill must shorten text itself before
+calling this.
 """
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 
 from pptx import Presentation
@@ -37,7 +39,7 @@ ONYX = RGBColor(0x14, 0x1E, 0x27)
 SLATE = RGBColor(0x34, 0x44, 0x4D)
 ORANGE = RGBColor(0xF3, 0x78, 0x20)
 ORANGE_SMALL = RGBColor(0xB3, 0x53, 0x0C)
-TILE_BODY_BG = RGBColor(0xF3, 0xF4, 0xF5)
+ROW_BG = RGBColor(0xF3, 0xF4, 0xF5)
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
 FONT = 'Arial'
 
@@ -46,45 +48,86 @@ DEFAULT_MASTER = (
     r"\Downloads 16 Pro\Template_Powerpoint_Master_V2.1_03-27-25.pptx"
 )
 
-LENS_ORDER = ['Cost', 'Risk', 'Time', 'Benefit']
+LENS_ORDER = ['cost', 'risk', 'time', 'benefit']
+LENS_LABEL = {'cost': 'Cost', 'risk': 'Risk', 'time': 'Time', 'benefit': 'Benefit'}
+DISPOSITIONS = {'Big rock', 'Small rock', 'Backlog', 'Redirect', 'Decline'}
+STATUSES = {'Triaged', 'Proposed'}
 
-# Consistent vertical rhythm: every section (Ask, Who, Triage, Context)
-# starts GAP after the previous one ends, so spacing reads as one system
-# and there is no large empty band.
-GAP = 220000
+REQUIRED_KEYS = {
+    'title', 'disposition', 'disposition_plain', 'problem', 'evidence',
+    'lenses', 'total', 'status', 'decision', 'requester', 'function',
+    'submitted', 'notes_sources', 'source_file',
+}
+# v3 schema keys: if any of these show up, the caller is passing the old
+# intake-form-shaped fields, not the v4 decision-argument schema.
+V3_KEYS = {
+    'title_name', 'ask', 'who_how_often', 'triage', 'context_bullets',
+    'footer_source', 'footer_date',
+}
+
+GAP = 180000
 
 
 def word_count(text):
     return len(text.split())
 
 
-def triage_word_count(t):
-    parts = [
-        f"Cost {t['cost']}", f"Risk {t['risk']}", f"Time {t['time']}",
-        f"Benefit {t['benefit']}", f"Total {t['total']}", t['fit'],
-        t['decision_date'], t.get('note', ''),
-    ]
-    return word_count(' '.join(str(p) for p in parts if p))
+def check_schema(f):
+    errors = []
+    present_v3 = V3_KEYS & set(f)
+    if present_v3:
+        errors.append(
+            "fields use the old (v3) schema: " + ', '.join(sorted(present_v3))
+            + ". Rebuild the fields JSON against the v4 schema (see SKILL.md)."
+        )
+    missing = REQUIRED_KEYS - set(f)
+    if missing:
+        errors.append(f"missing required field(s): {', '.join(sorted(missing))}")
+    if errors:
+        raise ValueError('Fields do not match the v4 schema:\n' + '\n'.join(' - ' + e for e in errors))
 
 
 def check_budgets(f):
     errors = []
-    if word_count(f['ask']) > 30:
-        errors.append(f"'ask' is {word_count(f['ask'])} words, budget is 30")
-    if word_count(f['who_how_often']) > 20:
-        errors.append(f"'who_how_often' is {word_count(f['who_how_often'])} words, budget is 20")
-    tw = triage_word_count(f['triage'])
-    if tw > 30:
-        errors.append(f"'triage' section is {tw} words, budget is 30")
-    bullets = f['context_bullets']
-    if not (2 <= len(bullets) <= 3):
-        errors.append(f"'context_bullets' has {len(bullets)} items, must be 2 or 3")
-    total_bullet_words = sum(word_count(b) for b in bullets)
-    if total_bullet_words > 40:
-        errors.append(f"'context_bullets' total is {total_bullet_words} words, budget is 40")
-    for i, b in enumerate(bullets):
-        if not b.rstrip().endswith(']') or '[' not in b:
-            errors.append(f"context_bullets[{i}] must end with a numbered source marker like '[1]'")
+    if word_count(f['title']) > 12:
+        errors.append(f"'title' is {word_count(f['title'])} words, budget is 12")
+    if f['disposition'] not in DISPOSITIONS:
+        errors.append(f"'disposition' is {f['disposition']!r}, must be one of {sorted(DISPOSITIONS)}")
+    if f['status'] not in STATUSES:
+        errors.append(f"'status' is {f['status']!r}, must be one of {sorted(STATUSES)}")
+    if word_count(f['problem']) > 30:
+        errors.append(f"'problem' is {word_count(f['problem'])} words, budget is 30")
+
+    evidence = f['evidence']
+    if not (2 <= len(evidence) <= 3):
+        errors.append(f"'evidence' has {len(evidence)} items, must be 2 or 3")
+    total_evidence_words = sum(word_count(b) for b in evidence)
+    if total_evidence_words > 40:
+        errors.append(f"'evidence' total is {total_evidence_words} words, budget is 40")
+    source_ns = {s['n'] for s in f.get('notes_sources', [])}
+    for i, b in enumerate(evidence):
+        m = re.search(r'\[(\d+)\]\s*$', b.rstrip())
+        if not m:
+            errors.append(f"evidence[{i}] must end with a numbered source marker like '[1]'")
+        elif int(m.group(1)) not in source_ns:
+            errors.append(f"evidence[{i}] cites [{m.group(1)}], but notes_sources has no entry with n={m.group(1)}")
+
+    lenses = f['lenses']
+    missing_lenses = set(LENS_ORDER) - set(lenses)
+    if missing_lenses:
+        errors.append(f"'lenses' is missing: {', '.join(sorted(missing_lenses))}")
+    else:
+        for name in LENS_ORDER:
+            why = lenses[name]['why']
+            if word_count(why) > 8:
+                errors.append(f"lenses.{name}.why is {word_count(why)} words, budget is 8")
+        score_sum = sum(lenses[name]['score'] for name in LENS_ORDER)
+        if score_sum != f['total']:
+            errors.append(f"'total' is {f['total']}, but the lens scores sum to {score_sum}")
+
+    if word_count(f['decision']['ask']) > 20:
+        errors.append(f"'decision.ask' is {word_count(f['decision']['ask'])} words, budget is 20")
+
     if errors:
         raise ValueError('Slide text over budget, shorten before building:\n' + '\n'.join(' - ' + e for e in errors))
 
@@ -117,65 +160,73 @@ def keep_only_slide(prs, keep_index):
 def drop_lens_tables(slide):
     """Remove the master's own Cost/Risk/Time/Benefit tables. They carry
     "-- / ++" scale markers and blank body cells sized for a full-page
-    Business Lens slide; a compact score row is built fresh instead."""
+    Business Lens slide; a compact scorecard is built fresh instead."""
     for sh in list(slide.shapes):
         if sh.has_table:
             sh._element.getparent().remove(sh._element)
 
 
-def set_text(tf, text, size, color, bold=True, align=PP_ALIGN.CENTER):
+def drop_layout_table_placeholders(slide):
+    """Remove the layout's own 'Table Placeholder' prompt boxes. Dropping
+    the slide's table shapes (drop_lens_tables) does not remove these: an
+    empty placeholder still inherits its box/border from the layout and
+    renders as a faint ghost rectangle wherever this script's own content
+    does not fully cover it. This edits only the in-memory layout copy of
+    this trimmed output deck, never the master file on disk."""
+    layout = slide.slide_layout
+    for sh in list(layout.shapes):
+        if 'table placeholder' in sh.name.lower():
+            sh._element.getparent().remove(sh._element)
+
+
+def set_text(tf, runs, size, align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.MIDDLE, word_wrap=True):
+    """runs: list of (text, color, bold) tuples placed on one paragraph."""
     tf.clear()
-    tf.word_wrap = True
-    tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+    tf.word_wrap = word_wrap
+    tf.vertical_anchor = anchor
     p = tf.paragraphs[0]
     p.alignment = align
-    run = p.add_run()
-    run.text = text
-    run.font.name = FONT
-    run.font.size = Pt(size)
-    run.font.color.rgb = color
-    run.font.bold = bold
+    for text, color, bold in runs:
+        run = p.add_run()
+        run.text = text
+        run.font.name = FONT
+        run.font.size = Pt(size)
+        run.font.color.rgb = color
+        run.font.bold = bold
 
 
-def add_tile(slide, left, top, width, height, label, score_text, header_color):
-    """One score tile: a colored header band (label, white bold) over a
-    light body band (the big score, in onyx). No empty cells, no scale
-    markers — just the two pieces of data a reader needs."""
-    header_h = round(height * 0.38)
-    body_h = height - header_h
-
-    header = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Emu(left), Emu(top), Emu(width), Emu(header_h))
-    header.fill.solid()
-    header.fill.fore_color.rgb = header_color
-    header.line.fill.background()
-    header.shadow.inherit = False
-    set_text(header.text_frame, label, 11, WHITE)
-
-    body = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Emu(left), Emu(top + header_h), Emu(width), Emu(body_h))
-    body.fill.solid()
-    body.fill.fore_color.rgb = TILE_BODY_BG
-    body.line.fill.background()
-    body.shadow.inherit = False
-    set_text(body.text_frame, score_text, 22, ONYX)
-
-    return header, body
-
-
-def add_textbox(slide, left, top, width, height, text, size, color, bold=False, italic=False):
+def add_textbox(slide, left, top, width, height, size=14, anchor=MSO_ANCHOR.TOP):
+    """A plain white-filled text box. The master's white layouts carry a
+    background swoosh graphic that runs under most of the slide; without
+    its own opaque fill, a text box sitting over it renders with the
+    swoosh's lines crossing the text. White fill keeps the content legible
+    while still reading as the master's plain white layout."""
     box = slide.shapes.add_textbox(Emu(left), Emu(top), Emu(width), Emu(height))
-    tf = box.text_frame
-    tf.word_wrap = True
-    run = tf.paragraphs[0].add_run()
-    run.text = text
-    run.font.name = FONT
-    run.font.size = Pt(size)
-    run.font.color.rgb = color
-    run.font.bold = bold
-    run.font.italic = italic
+    box.fill.solid()
+    box.fill.fore_color.rgb = WHITE
+    box.line.fill.background()
+    box.shadow.inherit = False
+    box.text_frame.vertical_anchor = anchor
     return box
 
 
+def add_rect(slide, left, top, width, height, fill_color):
+    shp = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Emu(left), Emu(top), Emu(width), Emu(height))
+    shp.fill.solid()
+    shp.fill.fore_color.rgb = fill_color
+    shp.line.fill.background()
+    shp.shadow.inherit = False
+    return shp
+
+
+def heading(slide, left, top, width, text):
+    box = add_textbox(slide, left, top, width, 230000)
+    set_text(box.text_frame, [(text, ORANGE_SMALL, True)], 12)
+    return 230000
+
+
 def build(fields, out_path, master_path=None):
+    check_schema(fields)
     check_budgets(fields)
     master_path = resolve_master_path(master_path)
     if not Path(master_path).exists():
@@ -189,101 +240,140 @@ def build(fields, out_path, master_path=None):
     slide = prs.slides[0]
     slide_w, slide_h = prs.slide_width, prs.slide_height
 
-    # title placeholder, reused as-is (idx 0 on this layout)
+    # --- Title: the recommendation sentence, reusing the layout placeholder ---
     title_ph = next(sh for sh in slide.placeholders if sh.placeholder_format.idx == 0)
+    # Read the full inherited geometry up front: this placeholder has no
+    # xfrm of its own (it inherits from the layout), and python-pptx fills
+    # in only the attribute you set if you assign a single one (left/top/
+    # width/height) without the others, zeroing the rest. Always set all
+    # four together below.
+    title_left, title_top, title_width, title_height = (
+        title_ph.left, title_ph.top, title_ph.width, title_ph.height
+    )
+    margin = title_left
+    content_w = slide_w - 2 * margin
+
+    tag_w = 0
+    if fields['status'] == 'Proposed':
+        tag_w = 1500000
+        title_width = content_w - tag_w - GAP
+        title_ph.left, title_ph.top, title_ph.width, title_ph.height = (
+            title_left, title_top, title_width, title_height
+        )
+        tag_h = min(title_height, 460000)
+        tag = add_rect(slide, title_left + title_width + GAP, title_top, tag_w, tag_h, ORANGE)
+        set_text(tag.text_frame, [('PROPOSED', WHITE, True)], 12, align=PP_ALIGN.CENTER)
+
     tf = title_ph.text_frame
     tf.clear()
     run = tf.paragraphs[0].add_run()
-    run.text = f"{fields['title_name']} \u2014 {fields['disposition']}"
+    run.text = fields['title']
     run.font.name = FONT
 
     drop_lens_tables(slide)
+    drop_layout_table_placeholders(slide)
 
-    margin = title_ph.left
-    content_w = slide_w - 2 * margin
-    t = fields['triage']
-    scores = {'Cost': t['cost'], 'Risk': t['risk'], 'Time': t['time'], 'Benefit': t['benefit']}
-
-    def heading(text, top):
-        box = add_textbox(slide, margin, top, content_w, 260000, text, 12, ORANGE_SMALL, bold=True)
-        return 260000
-
-    def body(text, top, height):
-        add_textbox(slide, margin, top, content_w, height, text, 14, SLATE)
-        return height
-
-    cursor = title_ph.top + title_ph.height + GAP
-
-    # --- Ask ---
-    cursor += heading('THE ASK', cursor) + 60000
-    cursor += body(fields['ask'], cursor, 560000) + GAP
-
-    # --- Who and how often ---
-    cursor += heading('WHO AND HOW OFTEN', cursor) + 60000
-    cursor += body(fields['who_how_often'], cursor, 400000) + GAP
-
-    # --- Triage: five tiles, then fit / decision date / note below them,
-    # in their own block with clear spacing (never on top of the tiles) ---
-    cursor += heading('TRIAGE', cursor) + 60000
-    tile_gap = 150000
-    tile_w = (content_w - 4 * tile_gap) // 5
-    tile_h = 1050000
-    x = margin
-    for name in LENS_ORDER:
-        score = scores[name]
-        add_tile(slide, x, cursor, tile_w, tile_h, name, f"{score:+d}" if score else '0', ONYX)
-        x += tile_w + tile_gap
-    add_tile(slide, x, cursor, tile_w, tile_h, 'Total', f"{t['total']:+d}" if t['total'] else '0', ORANGE)
-    cursor += tile_h + GAP
-
-    caption = f"Fit: {t['fit']}  |  Decision date: {t['decision_date']}"
-    cursor += body(caption, cursor, 230000)
-    if t.get('note'):
-        cursor += body(t['note'], cursor, 280000)
-    cursor += GAP
-
-    # footer note position: beside the layout's own "Confidential and
-    # Proprietary" footer shape, same row, never overlapping it. On this
-    # master that shape is named "Footer Placeholder" but is not an actual
-    # <p:ph> placeholder, so it must be found via .shapes, not .placeholders.
+    # --- Reserve the bottom decision band and the footer row above it ---
     layout_footer = next(
         (sh for sh in slide.slide_layout.shapes if 'footer' in sh.name.lower() and sh.has_text_frame), None
     )
     if layout_footer is not None:
         footer_left = layout_footer.left + layout_footer.width + Emu(300000)
         footer_top = layout_footer.top
-        # the master's own footer shape overshoots the slide by a few EMU;
-        # clamp ours so it stays fully on-slide regardless
         footer_height = min(layout_footer.height, slide_h - footer_top)
     else:
         footer_left, footer_top, footer_height = margin, slide_h - Emu(400000), Emu(300000)
 
-    # --- Context --- (bullets box stops a clear gap above the footer row,
-    # so it can never overlap the footer note or "Confidential and
-    # Proprietary", however many bullets or how much text is in them)
-    cursor += heading('CONTEXT', cursor) + 60000
-    bullets_h = max(400000, int(footer_top) - int(cursor) - GAP)
-    bullets_box = slide.shapes.add_textbox(Emu(margin), Emu(cursor), Emu(content_w), Emu(bullets_h))
-    btf = bullets_box.text_frame
-    btf.word_wrap = True
-    for i, b in enumerate(fields['context_bullets']):
-        p = btf.paragraphs[0] if i == 0 else btf.add_paragraph()
+    band_h = 500000
+    band_top = footer_top - GAP - band_h
+    band = add_rect(slide, 0, band_top, slide_w, band_h, ONYX)
+    decision = fields['decision']
+    band_text = f"Decision needed: {decision['ask']} \u00b7 Owner: {decision['owner']} \u00b7 By: {decision['by']}"
+    band.text_frame.margin_left = Emu(int(margin) - 91440)  # align with the body's left margin, net of the rect's own text inset
+    set_text(band.text_frame, [(band_text, WHITE, True)], 13, align=PP_ALIGN.LEFT)
+
+    # --- Two-column body: left ~60% (problem + evidence), right ~40% (scorecard) ---
+    body_top = title_top + title_height + GAP
+    body_bottom = band_top - GAP
+    body_h = body_bottom - body_top
+
+    col_gap = 250000
+    left_w = round((content_w - col_gap) * 0.6)
+    right_w = content_w - col_gap - left_w
+    left_x = margin
+    right_x = margin + left_w + col_gap
+
+    # Left column: the problem (main content) then its evidence
+    cursor = body_top
+    cursor += heading(slide, left_x, cursor, left_w, 'THE PROBLEM') + 60000
+    problem_h = 900000
+    problem_box = add_textbox(slide, left_x, cursor, left_w, problem_h)
+    set_text(problem_box.text_frame, [(fields['problem'], SLATE, False)], 16, anchor=MSO_ANCHOR.TOP)
+    cursor += problem_h + GAP
+
+    cursor += heading(slide, left_x, cursor, left_w, 'EVIDENCE') + 60000
+    # Size the box to the bullets' estimated wrapped height, not the full
+    # remaining column: a fixed-height box here would leave a bare empty
+    # band under short evidence (the v3 fault), where a box only as tall
+    # as its text leaves the master's own background showing instead.
+    chars_per_line = max(1, int(left_w / 72000))  # ~13pt Arial average character width in EMU
+    line_h = 230000
+    est_lines = sum(max(1, -(-len(b) // chars_per_line)) for b in fields['evidence'])
+    evidence_h = min(body_top + body_h - cursor, est_lines * line_h + len(fields['evidence']) * 90000)
+    evidence_box = add_textbox(slide, left_x, cursor, left_w, evidence_h)
+    etf = evidence_box.text_frame
+    etf.clear()
+    etf.word_wrap = True
+    for i, b in enumerate(fields['evidence']):
+        p = etf.paragraphs[0] if i == 0 else etf.add_paragraph()
+        p.space_after = Pt(6)
         run = p.add_run()
         run.text = '\u2022 ' + b
         run.font.name = FONT
         run.font.size = Pt(13)
         run.font.color.rgb = SLATE
 
-    footer_width = slide_w - margin - footer_left
-    footer = f"Source: {fields['footer_source']}    {fields['footer_date']}"
-    add_textbox(slide, footer_left, footer_top, footer_width, footer_height, footer, 10, SLATE, italic=True)
+    # Right column: compact scorecard (4 lens rows, then Total, then the
+    # disposition paired with its plain meaning so neither stands alone)
+    row_gap = 60000
+    row_h = (body_h - 5 * row_gap) // 6  # 4 lens rows + total row + disposition row, with room to spare
+    row_h = min(row_h, 520000)
+    name_w = round(right_w * 0.32)
+    score_w = round(right_w * 0.18)
+    reason_w = right_w - name_w - score_w
+    lenses = fields['lenses']
+    y = body_top
+    for name in LENS_ORDER:
+        score = lenses[name]['score']
+        name_rect = add_rect(slide, right_x, y, name_w, row_h, ROW_BG)
+        set_text(name_rect.text_frame, [(LENS_LABEL[name], ONYX, True)], 12, align=PP_ALIGN.LEFT)
+        score_rect = add_rect(slide, right_x + name_w, y, score_w, row_h, ROW_BG)
+        set_text(score_rect.text_frame, [(f"{score:+d}", ONYX, True)], 14, align=PP_ALIGN.CENTER)
+        reason_rect = add_rect(slide, right_x + name_w + score_w, y, reason_w, row_h, ROW_BG)
+        set_text(reason_rect.text_frame, [(lenses[name]['why'], SLATE, False)], 12, align=PP_ALIGN.LEFT)
+        y += row_h + row_gap
 
-    # speaker notes: sources with title, link, date; unverified claims marked
+    total_name = add_rect(slide, right_x, y, name_w + score_w, row_h, ORANGE)
+    set_text(total_name.text_frame, [('TOTAL', WHITE, True)], 12, align=PP_ALIGN.LEFT)
+    total_score = add_rect(slide, right_x + name_w + score_w, y, reason_w, row_h, ORANGE)
+    set_text(total_score.text_frame, [(f"{fields['total']:+d}", WHITE, True)], 14, align=PP_ALIGN.CENTER)
+    y += row_h + row_gap
+
+    disp_box = add_textbox(slide, right_x, y, right_w, row_h)
+    disp_text = f"{fields['disposition']} \u2014 {fields['disposition_plain']}"
+    set_text(disp_box.text_frame, [(disp_text, ONYX, False)], 12, align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.TOP)
+
+    # --- Footer note, beside the master's own footer row ---
+    footer_width = slide_w - margin - footer_left
+    footer_text = f"{fields['requester']}, {fields['function']} \u00b7 submitted {fields['submitted']}"
+    footer_box = add_textbox(slide, footer_left, footer_top, footer_width, footer_height)
+    set_text(footer_box.text_frame, [(footer_text, SLATE, False)], 9, align=PP_ALIGN.LEFT)
+
+    # --- Speaker notes: sources with title, link, date, plus the source file ---
     notes = slide.notes_slide
-    lines = []
+    lines = [f"Source file: {fields['source_file']}"]
     for s in fields.get('notes_sources', []):
-        tag = ' (unverified)' if s.get('unverified') else ''
-        lines.append(f"[{s['n']}] {s['title']} \u2014 {s.get('link', '')} \u2014 {s.get('date', '')}{tag}")
+        lines.append(f"[{s['n']}] {s['title']} \u2014 {s.get('link', '')} \u2014 {s.get('date', '')}")
     notes.notes_text_frame.text = '\n'.join(lines)
 
     out_path = Path(out_path)

@@ -1,6 +1,6 @@
 ---
 name: request-slide
-description: Use when the user asks to "make the management slide for <submission>", wants a "one-slider for request ...", or says "request slide". Builds a one-slide management summary (.pptx) for one intake-triage submission, from the submission's own fields plus a small, scoped SharePoint and Teams context search.
+description: Use when the user asks to "make the management slide for <submission>", wants a "one-slider for request ...", or says "request slide". Builds a one-slide management summary (.pptx) for one intake-triage submission. The slide argues for a decision; it never just reprints the intake form.
 ---
 
 # request-slide
@@ -9,6 +9,11 @@ Builds one fixed-template management slide for one request in
 `ssemwal-cdc/intake-submissions`. Every slide uses the same layout. Only the
 text changes. Governing ruling: `docs/decisions/request-slide.md` in
 `intake_triage`.
+
+The slide argues for a decision, not the form. Write the title as a
+recommendation sentence. Give each lens a one-line reason. Pull and cite
+real evidence. Never invent a fact or a figure the submission does not
+give you.
 
 ## Steps
 
@@ -41,28 +46,54 @@ text changes. Governing ruling: `docs/decisions/request-slide.md` in
    text yourself to fit the word budgets below. Never rely on the script to
    auto-shrink text. It fails loudly on overflow instead.
 
+   - Write `title` as a recommendation sentence (what to do, and why),
+     never the bare submission name. If `status` is `Proposed`, phrase it
+     as the proposed action.
+   - Write `problem` from the submission's own `whatGoesWrong` words, kept
+     in the requester's own voice. Never invent a dollar or hour figure
+     the submission does not give you.
+   - Write each `lenses.<name>.why` as the one-line reason behind that
+     score, grounded in the evidence or the submission.
+   - Pull `evidence` from the kept SharePoint/Teams sources (step 3-4), not
+     from the submission text. Every bullet ends in a `[n]` that has a
+     matching entry in `notes_sources`.
+   - If `triage` on the submission is empty, set `status` to `"Proposed"`.
+     Propose your own `lenses` scores and `disposition`, grounded in the
+     evidence. Say in the handoff that these are proposed, not triaged.
+   - Pair `disposition` with `disposition_plain`: the plain-English meaning
+     of that disposition (for example "Small rock" -> "Fits within a
+     month"). Never show the disposition alone.
+
    Fields JSON schema (all required):
    ```json
    {
-     "title_name": "short name",
+     "title": "recommendation sentence, <= 12 words",
      "disposition": "Big rock | Small rock | Backlog | Redirect | Decline",
-     "ask": "<= 30 words",
-     "who_how_often": "<= 20 words",
-     "triage": {
-       "cost": -3..3, "risk": -3..3, "time": -3..3, "benefit": -3..3,
-       "total": number, "fit": "short phrase", "decision_date": "YYYY-MM-DD",
-       "note": "short phrase (triage section as a whole is <= 30 words)"
+     "disposition_plain": "plain meaning of the disposition",
+     "problem": "<= 30 words",
+     "evidence": ["2 or 3 bullets, <= 40 words total, each ending in [n]"],
+     "lenses": {
+       "cost": {"score": -3..3, "why": "<= 8 words"},
+       "risk": {"score": -3..3, "why": "<= 8 words"},
+       "time": {"score": -3..3, "why": "<= 8 words"},
+       "benefit": {"score": -3..3, "why": "<= 8 words"}
      },
-     "context_bullets": ["2 or 3 bullets, <= 40 words total, each ending in [n]"],
-     "footer_source": "the submission file name",
-     "footer_date": "today, YYYY-MM-DD",
+     "total": "sum of the four lens scores",
+     "status": "Triaged | Proposed",
+     "decision": {
+       "ask": "<= 20 words, what the owner must decide",
+       "owner": "who decides",
+       "by": "YYYY-MM-DD or TBD"
+     },
+     "requester": "from the submission",
+     "function": "from the submission",
+     "submitted": "the submission's own submitted date, YYYY-MM-DD",
      "notes_sources": [
-       {"n": 1, "title": "...", "link": "...", "date": "...", "unverified": false}
-     ]
+       {"n": 1, "title": "...", "link": "...", "date": "..."}
+     ],
+     "source_file": "the submission file name"
    }
    ```
-   Mark an unverified claim as `"unverified": true` on its source entry.
-   That renders in the speaker notes.
 
 6. **Run the builder:**
    ```
@@ -111,23 +142,29 @@ the master read-only. It keeps only the master's "Business Lens - White"
 slide. White is the master's own rule for an internal, detail-heavy deck.
 It drops the other 139 slides from the output.
 
-It reuses that slide's own title, footer ("Confidential and Proprietary"),
-tagline, and logo, exactly as the layout provides them. It reuses the
-slide's four Cost/Risk/Time/Benefit tables as the score tiles, resized into
-one row. A fifth tile, for Total, is cloned from the same table shape. The
-master has no Total tile of its own.
+It reuses that slide's own footer ("Confidential and Proprietary") and
+logo, exactly as the layout provides them. It drops the slide's own four
+Cost/Risk/Time/Benefit tables; a compact scorecard is drawn fresh instead,
+one row per lens plus a Total row. Every text box is drawn with an opaque
+white fill, so the master's own background graphic never shows through
+and crosses the text.
 
 Colors, where the master leaves the choice: onyx (#141E27), slate
 (#34444D), orange (#F37820), and #B3530C for small orange text. Arial
 throughout.
 
-Section order: title (name and disposition), the ask, who and how often,
-triage (the five tiles, then fit, decision date, and note), context
-(numbered bullets), and a footer note. The footer note gives the source
-file name and date. It sits beside the master's own "Confidential and
-Proprietary" line.
+Layout, top to bottom:
+- Title: the recommendation sentence. A "PROPOSED" tag shows next to it
+  when `status` is `Proposed`.
+- Left column: the problem, then its evidence.
+- Right column: the scorecard, the Total row, then the disposition paired
+  with its plain meaning.
+- Bottom band: the decision needed, its owner, and its due date, on an
+  onyx strip.
+- Footer note, beside the master's own "Confidential and Proprietary"
+  line: the requester, function, and submission date.
 
-Speaker notes list each numbered source, with title, link, and date. They
-mark unverified claims. See `examples/sample.json` for a worked example
+Speaker notes list the source file, then each numbered source with its
+title, link, and date. See `examples/sample.json` for a worked example
 (sample data only, no live SharePoint or Teams content). Build it yourself
 to see the rendered slide. The output itself is never committed.
