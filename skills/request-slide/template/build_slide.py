@@ -179,19 +179,43 @@ def drop_layout_table_placeholders(slide):
             sh._element.getparent().remove(sh._element)
 
 
-def drop_pictures(slide):
-    """Remove every picture shape from the slide and its layout (the
-    background swoosh, and the layout's own small logo picture). The
-    master's 'white' layouts all carry a large decorative picture that
-    runs under most of the slide; it has no swoosh-free variant. Rather
-    than paint over it with opaque text boxes (a patch that still left
-    grey slivers showing in any gap), this drops the picture shapes
-    outright, so the slide is genuinely plain white. This edits only the
-    in-memory copy of this trimmed output deck, never the master on disk."""
+SWOOSH_MIN_WIDTH = 6000000  # EMU: the master's background swoosh is ~9.5M wide; the logo is ~0.3M
+
+
+def drop_swoosh_pictures(slide):
+    """Remove only the background swoosh picture(s), keeping the logo.
+    The master's 'white' layouts all carry a large decorative picture
+    that runs under most of the slide; it has no swoosh-free variant.
+    Rather than paint over it with opaque text boxes (a patch that still
+    left grey slivers showing in any gap), this drops the swoosh picture
+    outright, so the slide is genuinely plain white -- but the layout's
+    small logo picture is a different, much narrower shape, and stays.
+    This edits only the in-memory copy of this trimmed output deck,
+    never the master on disk."""
     PICTURE = 13
     for sh in list(slide.shapes) + list(slide.slide_layout.shapes):
-        if sh.shape_type == PICTURE:
+        if sh.shape_type == PICTURE and sh.width is not None and sh.width >= SWOOSH_MIN_WIDTH:
             sh._element.getparent().remove(sh._element)
+
+
+def find_logo(slide):
+    """The layout's small logo picture, if any (used to keep content clear of it)."""
+    PICTURE = 13
+    for sh in slide.slide_layout.shapes:
+        if sh.shape_type == PICTURE and sh.width is not None and sh.width < SWOOSH_MIN_WIDTH:
+            return sh
+    return None
+
+
+def clear_logo_of_content_area(slide, content_top):
+    """Nudge the logo fully above the content area (title row only) if it
+    dips below content_top. The master places it a little below the
+    title's own top, straddling where this script's content starts; no
+    content shape is ever drawn there, so moving the logo up is the only
+    fix, and it only touches this trimmed output's in-memory layout."""
+    logo = find_logo(slide)
+    if logo is not None and logo.top + logo.height > content_top:
+        logo.top = Emu(max(0, content_top - logo.height))
 
 
 def set_text(tf, runs, size, align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.MIDDLE, word_wrap=True):
@@ -211,9 +235,9 @@ def set_text(tf, runs, size, align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.MIDDLE, word
 
 
 def add_textbox(slide, left, top, width, height, size=14, anchor=MSO_ANCHOR.TOP, name=None):
-    """A plain text box, no fill. drop_pictures() removes the master's
-    background picture outright (see there), so a text box needs no white
-    patch of its own to stay legible."""
+    """A plain text box, no fill. drop_swoosh_pictures() removes the
+    master's background picture outright (see there), so a text box needs
+    no white patch of its own to stay legible."""
     box = slide.shapes.add_textbox(Emu(left), Emu(top), Emu(width), Emu(height))
     box.shadow.inherit = False
     box.text_frame.vertical_anchor = anchor
@@ -276,7 +300,8 @@ def build(fields, out_path, master_path=None):
 
     drop_lens_tables(slide)
     drop_layout_table_placeholders(slide)
-    drop_pictures(slide)  # the background swoosh and the layout's own logo
+    drop_swoosh_pictures(slide)  # background art only; the layout's logo stays
+    clear_logo_of_content_area(slide, title_top + title_height)
 
     body_top = title_top + title_height + GAP
     if fields['status'] == 'Proposed':
@@ -304,24 +329,44 @@ def build(fields, out_path, master_path=None):
     left_x = margin
     right_x = margin + left_w + col_gap
 
-    def est_h(text, width, chars_per_emu_width=72000, line_h=230000, pad=90000):
-        chars_per_line = max(1, int(width / chars_per_emu_width))
-        return max(1, -(-len(text) // chars_per_line)) * line_h + pad
+    EMU_PER_INCH = 914400
 
-    # Left column: the problem (main content) then its evidence. Each box
-    # is sized to its own estimated wrapped height, not stretched to fill
-    # the column, so the column's real height is known once built (used
-    # below to place the band right after it, instead of leaving a bare
-    # gap above a band fixed near the page bottom).
+    def est_h(text, width_emu, size_pt, pad=60000):
+        """A text box tall enough for `text` at `size_pt` in `width_emu`,
+        using the same chars-per-line/line-height model as the estimated-
+        overflow check, plus a small pad so wrapped text never bleeds past
+        its box into whatever is drawn next."""
+        width_in = width_emu / EMU_PER_INCH
+        chars_per_line = max(1, (width_in * 96) / (size_pt * 0.62))
+        lines = max(1, -(-len(text) // int(chars_per_line)))
+        line_h = (size_pt * 1.2 / 72) * EMU_PER_INCH
+        return round(lines * line_h) + pad
+
+    # --- Decision band: pinned just above the footer row, same spot on
+    # every slide (template consistency). The two columns below then
+    # spread their own content over the space between the title/tag and
+    # the band, each with even internal gaps, instead of a fixed small
+    # gap followed by one large empty area. ---
+    band_h = 500000
+    band_top = footer_top - GAP - band_h
+    available_h = band_top - GAP - body_top
+
+    # Left column: the problem, then its evidence. Natural (tight) heights
+    # first; the one gap between the two blocks then absorbs whatever
+    # space is left, so the column's content reaches the band exactly.
+    heading_h, heading_gap = 230000, 60000
+    problem_h = est_h(fields['problem'], left_w, 16)
+    evidence_h = sum(est_h(b, left_w, 13) for b in fields['evidence'])
+    left_fixed = 2 * (heading_h + heading_gap) + problem_h + evidence_h
+    left_gap = max(GAP, available_h - left_fixed)
+
     cursor = body_top
-    cursor += heading(slide, left_x, cursor, left_w, 'THE PROBLEM') + 60000
-    problem_h = est_h(fields['problem'], left_w, line_h=260000)
+    cursor += heading(slide, left_x, cursor, left_w, 'THE PROBLEM') + heading_gap
     problem_box = add_textbox(slide, left_x, cursor, left_w, problem_h)
     set_text(problem_box.text_frame, [(fields['problem'], SLATE, False)], 16, anchor=MSO_ANCHOR.TOP)
-    cursor += problem_h + GAP
+    cursor += problem_h + left_gap
 
-    cursor += heading(slide, left_x, cursor, left_w, 'EVIDENCE') + 60000
-    evidence_h = sum(est_h(b, left_w) for b in fields['evidence'])
+    cursor += heading(slide, left_x, cursor, left_w, 'EVIDENCE') + heading_gap
     evidence_box = add_textbox(slide, left_x, cursor, left_w, evidence_h)
     etf = evidence_box.text_frame
     etf.clear()
@@ -334,18 +379,21 @@ def build(fields, out_path, master_path=None):
         run.font.name = FONT
         run.font.size = Pt(13)
         run.font.color.rgb = SLATE
-    left_bottom = cursor + evidence_h
 
     # Right column: compact scorecard (4 lens rows, then Total, then the
     # disposition paired with its plain meaning so neither stands alone).
-    # Fixed row height, not stretched to fill the body: its real height is
-    # the same on every slide, so it can be balanced against the left
-    # column below instead of always reaching for the page bottom.
-    row_gap, row_h = 60000, 460000
+    # Row height is fixed (the same on every slide); the 5 gaps between
+    # the 6 rows absorb whatever space is left, same as the left column.
+    row_h = 460000
     name_w = round(right_w * 0.32)
     score_w = round(right_w * 0.18)
     reason_w = right_w - name_w - score_w
     lenses = fields['lenses']
+    disp_text = f"{fields['disposition']} \u2014 {fields['disposition_plain']}"
+    disp_h = est_h(disp_text, right_w, 12)
+    right_fixed = 5 * row_h + disp_h
+    row_gap = max(60000, round((available_h - right_fixed) / 5))
+
     y = body_top
     for name in LENS_ORDER:
         score = lenses[name]['score']
@@ -363,18 +411,9 @@ def build(fields, out_path, master_path=None):
     set_text(total_score.text_frame, [(f"{fields['total']:+d}", WHITE, True)], 14, align=PP_ALIGN.CENTER)
     y += row_h + row_gap
 
-    disp_text = f"{fields['disposition']} \u2014 {fields['disposition_plain']}"
-    disp_h = est_h(disp_text, right_w)
     disp_box = add_textbox(slide, right_x, y, right_w, disp_h)
     set_text(disp_box.text_frame, [(disp_text, ONYX, False)], 12, align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.TOP)
-    right_bottom = y + disp_h
 
-    # --- Decision band: placed right after whichever column runs longer,
-    # not pinned to the page bottom, so no bare gap is left above it. It
-    # never sits higher than the title/tag, and never lower than its usual
-    # spot just above the footer row. ---
-    band_h = 500000
-    band_top = max(body_top, min(max(left_bottom, right_bottom) + GAP, footer_top - GAP - band_h))
     band = add_rect(slide, 0, band_top, slide_w, band_h, ONYX)
     decision = fields['decision']
     band_text = f"Decision needed: {decision['ask']} \u00b7 Owner: {decision['owner']} \u00b7 By: {decision['by']}"
