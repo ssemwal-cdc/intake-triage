@@ -17,6 +17,10 @@
   }
 
   window.submitRequest = function(payload){
+    // Pre-write check: the one choke point before any write. Max 3 culture factors (owner ruling 2026-10-06).
+    if (Array.isArray(payload.cultureFactors) && payload.cultureFactors.length > 3) {
+      return Promise.reject(new Error('Pick up to 3 culture factors. Nothing was sent.'));
+    }
     var cfg = window.INTAKE_CONFIG || {};
     if (!cfg.token) {
       var h = location.hostname;

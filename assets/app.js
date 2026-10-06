@@ -22,6 +22,14 @@
   Array.prototype.forEach.call(f.querySelectorAll('input[name="sys"]'), function(r){
     r.addEventListener('change', updateWbFollowup);
   });
+  // Culture factors: at most 3 (owner ruling 2026-10-06). At 3, the unticked boxes lock.
+  var CULTURE_MAX = 3, cultureBoxes = f.querySelectorAll('#culture input'), cultureStatus = document.getElementById('cultureStatus');
+  function updateCulture(){
+    var n = document.querySelectorAll('#culture input:checked').length;
+    Array.prototype.forEach.call(cultureBoxes, function(c){ c.disabled = n >= CULTURE_MAX && !c.checked; });
+    cultureStatus.textContent = n >= CULTURE_MAX ? '3 picked. Untick one to pick another.' : '';
+  }
+  Array.prototype.forEach.call(cultureBoxes, function(c){ c.addEventListener('change', updateCulture); });
   function val(id){ return document.getElementById(id).value.trim(); }
   function picked(name){ var x = f.querySelector('input[name="'+name+'"]:checked'); return x ? x.value : ''; }
   var required = [['name','Your name'],['fn','Function'],['short','Short name for the request'],
@@ -93,7 +101,7 @@
   });
 
   document.getElementById('another').onclick = function(){
-    f.reset(); srcOther.hidden = true; wbFollowup.hidden = true;
+    f.reset(); srcOther.hidden = true; wbFollowup.hidden = true; updateCulture();
     f.querySelectorAll('.invalid').forEach(function(el){el.classList.remove('invalid')});
     done.classList.remove('show'); f.hidden = false; window.scrollTo(0,0);
   };
