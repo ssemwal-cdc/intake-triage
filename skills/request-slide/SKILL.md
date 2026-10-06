@@ -25,17 +25,29 @@ give you.
    ```
    gh api repos/ssemwal-cdc/intake-submissions/contents/submissions/<name> -H "Accept: application/vnd.github.raw"
    ```
-   Parse the JSON. If `triage` is `null`, stop and ask the owner. There is
-   no disposition yet to put on a management slide.
+   Parse the JSON. If `triage` is `null`, continue with `status` set to
+   `"Proposed"` (see step 5).
 
-3. **Build context searches**, from the request's own terms (shortName,
-   function, whatGoesWrong, envisionedSolution). Skip generic words.
-   - Up to 3 SharePoint searches: Microsoft 365 connector `sharepoint_search`,
-     then read the top hit or hits with `read_resource`.
-   - Up to 3 Teams searches: `chat_message_search`. If the submission's
-     `sensitiveData` is `"Yes"`, skip Teams search entirely.
+3. **Search the owner's connectors for context**, with the Microsoft 365
+   connector. Use the request's own terms (shortName, function,
+   whatGoesWrong, envisionedSolution, the systems it names). Skip generic
+   words.
+   - Teams, up to 4 searches with `chat_message_search`:
+     - the request's key terms;
+     - the same terms with `sender` set to the requester (`yourName`);
+     - the same terms with `sender` set to the named owner;
+     - "ASK FIRST" plus the key terms.
+     Read each promising hit in full with `read_resource`. Posts by the
+     requester about the same work are the strongest source.
+   - SharePoint, up to 3 searches with `sharepoint_search`. Include any file
+     that a kept Teams post attaches. Read the top hits with `read_resource`.
+   - Outlook, up to 2 searches with `outlook_email_search`, for the
+     request's key terms and the requester as sender.
+   - If the submission's `sensitiveData` is `"Yes"`, skip the Teams and
+     Outlook searches. Search SharePoint only.
    - Keep only hits tied to this request: the same project, system, or
-     person named in the submission. Drop everything else.
+     person named in the submission. Drop everything else. Never quote
+     message text beyond what one evidence bullet needs.
 
 4. **Show the owner the kept and dropped sources.** One line per source:
    title, and why it was kept or dropped. Wait for a yes before building
@@ -109,8 +121,8 @@ give you.
 
 - `python-pptx`. Install with `pip install python-pptx`.
 - `gh` CLI, authenticated for `ssemwal-cdc/intake-submissions`.
-- The Microsoft 365 connector (`sharepoint_search`, `chat_message_search`,
-  `read_resource`), for context searches.
+- The Microsoft 365 connector (`chat_message_search`, `sharepoint_search`,
+  `outlook_email_search`, `read_resource`), for context searches.
 - The official Compass master, `Template_Powerpoint_Master_V2.1_03-27-25.pptx`
   ("Compass PPT Template 2.0" from Marketing). The builder reads it
   read-only, local, and never commits it. See "The master" below.
