@@ -66,6 +66,10 @@ V3_KEYS = {
 }
 
 GAP = 180000
+EMU_PER_INCH = 914400
+HEADING_GAP = round(0.08 * EMU_PER_INCH)   # heading to its own body text
+SECTION_GAP = round(0.3 * EMU_PER_INCH)    # between sections (problem block -> evidence block)
+ROW_GAP = round(0.08 * EMU_PER_INCH)       # between scorecard rows
 
 
 def word_count(text):
@@ -329,8 +333,6 @@ def build(fields, out_path, master_path=None):
     left_x = margin
     right_x = margin + left_w + col_gap
 
-    EMU_PER_INCH = 914400
-
     def est_h(text, width_emu, size_pt, pad=60000):
         """A text box tall enough for `text` at `size_pt` in `width_emu`,
         using the same chars-per-line/line-height model as the estimated-
@@ -343,30 +345,38 @@ def build(fields, out_path, master_path=None):
         return round(lines * line_h) + pad
 
     # --- Decision band: pinned just above the footer row, same spot on
-    # every slide (template consistency). The two columns below then
-    # spread their own content over the space between the title/tag and
-    # the band, each with even internal gaps, instead of a fixed small
-    # gap followed by one large empty area. ---
+    # every slide (template consistency). ---
     band_h = 500000
     band_top = footer_top - GAP - band_h
     available_h = band_top - GAP - body_top
 
-    # Left column: the problem, then its evidence. Natural (tight) heights
-    # first; the one gap between the two blocks then absorbs whatever
-    # space is left, so the column's content reaches the band exactly.
-    heading_h, heading_gap = 230000, 60000
-    problem_h = est_h(fields['problem'], left_w, 16)
-    evidence_h = sum(est_h(b, left_w, 13) for b in fields['evidence'])
-    left_fixed = 2 * (heading_h + heading_gap) + problem_h + evidence_h
-    left_gap = max(GAP, available_h - left_fixed)
+    # Left column: the problem (sized to fit, 20pt max / 14pt min), then
+    # its evidence at a fixed 14pt. Gaps are always fixed (a heading to
+    # its body, and between the two sections); any space left over after
+    # the natural content height splits equally above and below the whole
+    # group, centering it between the tag and the band, instead of being
+    # stretched into the gaps.
+    heading_h = 230000
 
-    cursor = body_top
-    cursor += heading(slide, left_x, cursor, left_w, 'THE PROBLEM') + heading_gap
+    def left_natural_height(problem_size):
+        p_h = est_h(fields['problem'], left_w, problem_size)
+        e_h = sum(est_h(b, left_w, 14) for b in fields['evidence'])
+        return p_h, e_h, 2 * (heading_h + HEADING_GAP) + p_h + SECTION_GAP + e_h
+
+    problem_size = 20
+    problem_h, evidence_h, left_natural = left_natural_height(problem_size)
+    while left_natural > available_h and problem_size > 14:
+        problem_size -= 1
+        problem_h, evidence_h, left_natural = left_natural_height(problem_size)
+
+    left_top = body_top + max(0, available_h - left_natural) // 2
+    cursor = left_top
+    cursor += heading(slide, left_x, cursor, left_w, 'THE PROBLEM') + HEADING_GAP
     problem_box = add_textbox(slide, left_x, cursor, left_w, problem_h)
-    set_text(problem_box.text_frame, [(fields['problem'], SLATE, False)], 16, anchor=MSO_ANCHOR.TOP)
-    cursor += problem_h + left_gap
+    set_text(problem_box.text_frame, [(fields['problem'], SLATE, False)], problem_size, anchor=MSO_ANCHOR.TOP)
+    cursor += problem_h + SECTION_GAP
 
-    cursor += heading(slide, left_x, cursor, left_w, 'EVIDENCE') + heading_gap
+    cursor += heading(slide, left_x, cursor, left_w, 'EVIDENCE') + HEADING_GAP
     evidence_box = add_textbox(slide, left_x, cursor, left_w, evidence_h)
     etf = evidence_box.text_frame
     etf.clear()
@@ -377,22 +387,20 @@ def build(fields, out_path, master_path=None):
         run = p.add_run()
         run.text = '\u2022 ' + b
         run.font.name = FONT
-        run.font.size = Pt(13)
+        run.font.size = Pt(14)
         run.font.color.rgb = SLATE
 
-    # Right column: compact scorecard (4 lens rows, then Total, then the
-    # disposition paired with its plain meaning so neither stands alone).
-    # Row height is fixed (the same on every slide); the 5 gaps between
-    # the 6 rows absorb whatever space is left, same as the left column.
-    row_h = 460000
+    # Right column: compact scorecard. The 4 lens rows and the Total row
+    # grow taller to fill the column down to the band, with a fixed gap
+    # between rows; the disposition line sits directly under Total with
+    # no gap, sized only to its own text.
     name_w = round(right_w * 0.32)
     score_w = round(right_w * 0.18)
     reason_w = right_w - name_w - score_w
     lenses = fields['lenses']
     disp_text = f"{fields['disposition']} \u2014 {fields['disposition_plain']}"
     disp_h = est_h(disp_text, right_w, 12)
-    right_fixed = 5 * row_h + disp_h
-    row_gap = max(60000, round((available_h - right_fixed) / 5))
+    row_h = (available_h - 4 * ROW_GAP - disp_h) // 5
 
     y = body_top
     for name in LENS_ORDER:
@@ -403,13 +411,13 @@ def build(fields, out_path, master_path=None):
         set_text(score_rect.text_frame, [(f"{score:+d}", ONYX, True)], 14, align=PP_ALIGN.CENTER)
         reason_rect = add_rect(slide, right_x + name_w + score_w, y, reason_w, row_h, ROW_BG)
         set_text(reason_rect.text_frame, [(lenses[name]['why'], SLATE, False)], 12, align=PP_ALIGN.LEFT)
-        y += row_h + row_gap
+        y += row_h + ROW_GAP
 
     total_name = add_rect(slide, right_x, y, name_w + score_w, row_h, ORANGE)
     set_text(total_name.text_frame, [('TOTAL', WHITE, True)], 12, align=PP_ALIGN.LEFT)
     total_score = add_rect(slide, right_x + name_w + score_w, y, reason_w, row_h, ORANGE)
     set_text(total_score.text_frame, [(f"{fields['total']:+d}", WHITE, True)], 14, align=PP_ALIGN.CENTER)
-    y += row_h + row_gap
+    y += row_h  # disposition sits flush under Total: no gap
 
     disp_box = add_textbox(slide, right_x, y, right_w, disp_h)
     set_text(disp_box.text_frame, [(disp_text, ONYX, False)], 12, align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.TOP)
