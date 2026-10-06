@@ -24,19 +24,21 @@ give you.
 
 ## Steps
 
-1. **Get the submission file name** from the user. It looks like
-   `2026-09-30-test-end-to-end-check-4li3ye.json`, or a full path like
-   `submissions/2026-09-30-test-end-to-end-check-4li3ye.json`.
+1. **Find the submission.** The user names a request, a requester, or a
+   file such as `2026-09-30-operations-account-code-playbook-75x60v.json`.
+   Match it against the file names, `shortName` and `yourName` in the
+   submissions folder. When more than one matches, ask which one.
 
-2. **Read the submission:**
-   ```
-   gh api repos/ssemwal-cdc/intake-submissions/contents/submissions/<name> -H "Accept: application/vnd.github.raw"
-   ```
-   If `gh` is not available (for example in Claude chat), ask the owner to
-   attach or paste the submission JSON from the submissions link.
-   If `triage` is `null`, offer the owner the triage page to score it first.
-   Parse the JSON. If `triage` is `null`, continue with `status` set to
-   `"Proposed"` (see step 5).
+2. **Read the submission**, from the first source that works:
+   1. The owner's local clone, `C:\Users\ShivamSemwal\Clones\intake-submissions`.
+      Run `git -C <clone> pull` first, so new submissions and triage show.
+      Then read `submissions/<name>`. In Cowork, when that folder is not
+      shared yet, ask the owner to share it.
+   2. `gh api repos/ssemwal-cdc/intake-submissions/contents/submissions/<name> -H "Accept: application/vnd.github.raw"`
+   3. Ask the owner to attach or paste the submission JSON.
+
+   Parse the JSON. When `triage` is `null`, set `status` to `"Proposed"`
+   (see step 5), and offer the owner the triage page to score it first.
 
 3. **Search the owner's connectors for context**, with the Microsoft 365
    connector. Use the request's own terms (shortName, function,
@@ -150,9 +152,10 @@ Master path, in order:
 2. The `INTAKE_SLIDE_MASTER` environment variable.
 3. The default: the owner's OneDrive copy, at
    `C:\Users\ShivamSemwal\OneDrive - Compass Datacenters, LLC\Downloads 16 Pro\Template_Powerpoint_Master_V2.1_03-27-25.pptx`.
-4. None of these exists (for example in Claude chat): ask the owner to
-   attach the master to the chat, and pass the attached file's path with
-   `--master`. Never build on any other template.
+4. In Cowork, when the default path is not readable, ask the owner to
+   share the `Downloads 16 Pro` OneDrive folder with the session.
+5. When none of these works, ask the owner to attach the master. Pass the
+   attached file's path with `--master`. Never build on any other template.
 
 `.gitignore` blocks any `*master*.pptx` or `Template_Powerpoint_Master*.pptx`
 under `skills/request-slide/`. The master itself, and any slide built from
