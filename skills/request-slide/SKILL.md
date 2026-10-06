@@ -10,6 +10,13 @@ Builds one fixed-template management slide for one request in
 text changes. Governing ruling: `docs/decisions/request-slide.md` in
 `intake_triage`.
 
+Where things live:
+- Triage page, where the CFO team scores and saves each request:
+  https://ssemwal-cdc.github.io/intake-triage/triage.html
+- Submissions, each with its saved `triage` object (private repo):
+  https://github.com/ssemwal-cdc/intake-submissions/tree/main/submissions
+- Request form: https://ssemwal-cdc.github.io/intake-triage/
+
 The slide argues for a decision, not the form. Write the title as a
 recommendation sentence. Give each lens a one-line reason. Pull and cite
 real evidence. Never invent a fact or a figure the submission does not
@@ -26,7 +33,8 @@ give you.
    gh api repos/ssemwal-cdc/intake-submissions/contents/submissions/<name> -H "Accept: application/vnd.github.raw"
    ```
    If `gh` is not available (for example in Claude chat), ask the owner to
-   attach or paste the submission JSON from the private repo.
+   attach or paste the submission JSON from the submissions link.
+   If `triage` is `null`, offer the owner the triage page to score it first.
    Parse the JSON. If `triage` is `null`, continue with `status` set to
    `"Proposed"` (see step 5).
 
