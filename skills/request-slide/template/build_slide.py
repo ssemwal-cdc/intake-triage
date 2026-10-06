@@ -179,6 +179,21 @@ def drop_layout_table_placeholders(slide):
             sh._element.getparent().remove(sh._element)
 
 
+def drop_pictures(slide):
+    """Remove every picture shape from the slide and its layout (the
+    background swoosh, and the layout's own small logo picture). The
+    master's 'white' layouts all carry a large decorative picture that
+    runs under most of the slide; it has no swoosh-free variant. Rather
+    than paint over it with opaque text boxes (a patch that still left
+    grey slivers showing in any gap), this drops the picture shapes
+    outright, so the slide is genuinely plain white. This edits only the
+    in-memory copy of this trimmed output deck, never the master on disk."""
+    PICTURE = 13
+    for sh in list(slide.shapes) + list(slide.slide_layout.shapes):
+        if sh.shape_type == PICTURE:
+            sh._element.getparent().remove(sh._element)
+
+
 def set_text(tf, runs, size, align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.MIDDLE, word_wrap=True):
     """runs: list of (text, color, bold) tuples placed on one paragraph."""
     tf.clear()
@@ -195,18 +210,15 @@ def set_text(tf, runs, size, align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.MIDDLE, word
         run.font.bold = bold
 
 
-def add_textbox(slide, left, top, width, height, size=14, anchor=MSO_ANCHOR.TOP):
-    """A plain white-filled text box. The master's white layouts carry a
-    background swoosh graphic that runs under most of the slide; without
-    its own opaque fill, a text box sitting over it renders with the
-    swoosh's lines crossing the text. White fill keeps the content legible
-    while still reading as the master's plain white layout."""
+def add_textbox(slide, left, top, width, height, size=14, anchor=MSO_ANCHOR.TOP, name=None):
+    """A plain text box, no fill. drop_pictures() removes the master's
+    background picture outright (see there), so a text box needs no white
+    patch of its own to stay legible."""
     box = slide.shapes.add_textbox(Emu(left), Emu(top), Emu(width), Emu(height))
-    box.fill.solid()
-    box.fill.fore_color.rgb = WHITE
-    box.line.fill.background()
     box.shadow.inherit = False
     box.text_frame.vertical_anchor = anchor
+    if name:
+        box.name = name
     return box
 
 
@@ -252,17 +264,9 @@ def build(fields, out_path, master_path=None):
     )
     margin = title_left
     content_w = slide_w - 2 * margin
-
-    tag_w = 0
-    if fields['status'] == 'Proposed':
-        tag_w = 1500000
-        title_width = content_w - tag_w - GAP
-        title_ph.left, title_ph.top, title_ph.width, title_ph.height = (
-            title_left, title_top, title_width, title_height
-        )
-        tag_h = min(title_height, 460000)
-        tag = add_rect(slide, title_left + title_width + GAP, title_top, tag_w, tag_h, ORANGE)
-        set_text(tag.text_frame, [('PROPOSED', WHITE, True)], 12, align=PP_ALIGN.CENTER)
+    title_ph.left, title_ph.top, title_ph.width, title_ph.height = (
+        title_left, title_top, title_width, title_height
+    )
 
     tf = title_ph.text_frame
     tf.clear()
@@ -272,8 +276,18 @@ def build(fields, out_path, master_path=None):
 
     drop_lens_tables(slide)
     drop_layout_table_placeholders(slide)
+    drop_pictures(slide)  # the background swoosh and the layout's own logo
 
-    # --- Reserve the bottom decision band and the footer row above it ---
+    body_top = title_top + title_height + GAP
+    if fields['status'] == 'Proposed':
+        # A small tag under the title, never in the top-right corner where
+        # the (now-dropped) logo used to sit.
+        tag_w, tag_h = 1500000, 260000
+        tag = add_rect(slide, margin, body_top, tag_w, tag_h, ORANGE)
+        set_text(tag.text_frame, [('PROPOSED', WHITE, True)], 12, align=PP_ALIGN.CENTER)
+        body_top += tag_h + GAP
+
+    # --- Footer row, fixed at the bottom, beside the master's own footer ---
     layout_footer = next(
         (sh for sh in slide.slide_layout.shapes if 'footer' in sh.name.lower() and sh.has_text_frame), None
     )
@@ -284,42 +298,30 @@ def build(fields, out_path, master_path=None):
     else:
         footer_left, footer_top, footer_height = margin, slide_h - Emu(400000), Emu(300000)
 
-    band_h = 500000
-    band_top = footer_top - GAP - band_h
-    band = add_rect(slide, 0, band_top, slide_w, band_h, ONYX)
-    decision = fields['decision']
-    band_text = f"Decision needed: {decision['ask']} \u00b7 Owner: {decision['owner']} \u00b7 By: {decision['by']}"
-    band.text_frame.margin_left = Emu(int(margin) - 91440)  # align with the body's left margin, net of the rect's own text inset
-    set_text(band.text_frame, [(band_text, WHITE, True)], 13, align=PP_ALIGN.LEFT)
-
-    # --- Two-column body: left ~60% (problem + evidence), right ~40% (scorecard) ---
-    body_top = title_top + title_height + GAP
-    body_bottom = band_top - GAP
-    body_h = body_bottom - body_top
-
     col_gap = 250000
     left_w = round((content_w - col_gap) * 0.6)
     right_w = content_w - col_gap - left_w
     left_x = margin
     right_x = margin + left_w + col_gap
 
-    # Left column: the problem (main content) then its evidence
+    def est_h(text, width, chars_per_emu_width=72000, line_h=230000, pad=90000):
+        chars_per_line = max(1, int(width / chars_per_emu_width))
+        return max(1, -(-len(text) // chars_per_line)) * line_h + pad
+
+    # Left column: the problem (main content) then its evidence. Each box
+    # is sized to its own estimated wrapped height, not stretched to fill
+    # the column, so the column's real height is known once built (used
+    # below to place the band right after it, instead of leaving a bare
+    # gap above a band fixed near the page bottom).
     cursor = body_top
     cursor += heading(slide, left_x, cursor, left_w, 'THE PROBLEM') + 60000
-    problem_h = 900000
+    problem_h = est_h(fields['problem'], left_w, line_h=260000)
     problem_box = add_textbox(slide, left_x, cursor, left_w, problem_h)
     set_text(problem_box.text_frame, [(fields['problem'], SLATE, False)], 16, anchor=MSO_ANCHOR.TOP)
     cursor += problem_h + GAP
 
     cursor += heading(slide, left_x, cursor, left_w, 'EVIDENCE') + 60000
-    # Size the box to the bullets' estimated wrapped height, not the full
-    # remaining column: a fixed-height box here would leave a bare empty
-    # band under short evidence (the v3 fault), where a box only as tall
-    # as its text leaves the master's own background showing instead.
-    chars_per_line = max(1, int(left_w / 72000))  # ~13pt Arial average character width in EMU
-    line_h = 230000
-    est_lines = sum(max(1, -(-len(b) // chars_per_line)) for b in fields['evidence'])
-    evidence_h = min(body_top + body_h - cursor, est_lines * line_h + len(fields['evidence']) * 90000)
+    evidence_h = sum(est_h(b, left_w) for b in fields['evidence'])
     evidence_box = add_textbox(slide, left_x, cursor, left_w, evidence_h)
     etf = evidence_box.text_frame
     etf.clear()
@@ -332,12 +334,14 @@ def build(fields, out_path, master_path=None):
         run.font.name = FONT
         run.font.size = Pt(13)
         run.font.color.rgb = SLATE
+    left_bottom = cursor + evidence_h
 
     # Right column: compact scorecard (4 lens rows, then Total, then the
-    # disposition paired with its plain meaning so neither stands alone)
-    row_gap = 60000
-    row_h = (body_h - 5 * row_gap) // 6  # 4 lens rows + total row + disposition row, with room to spare
-    row_h = min(row_h, 520000)
+    # disposition paired with its plain meaning so neither stands alone).
+    # Fixed row height, not stretched to fill the body: its real height is
+    # the same on every slide, so it can be balanced against the left
+    # column below instead of always reaching for the page bottom.
+    row_gap, row_h = 60000, 460000
     name_w = round(right_w * 0.32)
     score_w = round(right_w * 0.18)
     reason_w = right_w - name_w - score_w
@@ -359,14 +363,28 @@ def build(fields, out_path, master_path=None):
     set_text(total_score.text_frame, [(f"{fields['total']:+d}", WHITE, True)], 14, align=PP_ALIGN.CENTER)
     y += row_h + row_gap
 
-    disp_box = add_textbox(slide, right_x, y, right_w, row_h)
     disp_text = f"{fields['disposition']} \u2014 {fields['disposition_plain']}"
+    disp_h = est_h(disp_text, right_w)
+    disp_box = add_textbox(slide, right_x, y, right_w, disp_h)
     set_text(disp_box.text_frame, [(disp_text, ONYX, False)], 12, align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.TOP)
+    right_bottom = y + disp_h
+
+    # --- Decision band: placed right after whichever column runs longer,
+    # not pinned to the page bottom, so no bare gap is left above it. It
+    # never sits higher than the title/tag, and never lower than its usual
+    # spot just above the footer row. ---
+    band_h = 500000
+    band_top = max(body_top, min(max(left_bottom, right_bottom) + GAP, footer_top - GAP - band_h))
+    band = add_rect(slide, 0, band_top, slide_w, band_h, ONYX)
+    decision = fields['decision']
+    band_text = f"Decision needed: {decision['ask']} \u00b7 Owner: {decision['owner']} \u00b7 By: {decision['by']}"
+    band.text_frame.margin_left = Emu(int(margin) - 91440)  # align with the body's left margin, net of the rect's own text inset
+    set_text(band.text_frame, [(band_text, WHITE, True)], 13, align=PP_ALIGN.LEFT)
 
     # --- Footer note, beside the master's own footer row ---
     footer_width = slide_w - margin - footer_left
     footer_text = f"{fields['requester']}, {fields['function']} \u00b7 submitted {fields['submitted']}"
-    footer_box = add_textbox(slide, footer_left, footer_top, footer_width, footer_height)
+    footer_box = add_textbox(slide, footer_left, footer_top, footer_width, footer_height, name='Footer note')
     set_text(footer_box.text_frame, [(footer_text, SLATE, False)], 9, align=PP_ALIGN.LEFT)
 
     # --- Speaker notes: sources with title, link, date, plus the source file ---
