@@ -282,10 +282,20 @@ async function run(){
       let putBody = null;
       await page.locator(`#culture input[value="${cultureVals[0]}"]`).check();
       await page.locator(`#culture input[value="${cultureVals[1]}"]`).check(); // 3 ticked, so the reset below has a lock to clear
+      // hold the PUT reply until after the assert, else the reply can re-enable the button first
+      let releasePut;
+      const putHeld = new Promise((r) => { releasePut = r; });
+      const holdPut = async (route) => {
+        if (route.request().method() === 'PUT') await putHeld;
+        return route.fallback();
+      };
+      await page.route('https://api.github.com/**', holdPut);
       const putPromise = page.waitForRequest((r) => r.method() === 'PUT' && /\/contents\/submissions\//.test(r.url()));
       await page.click('button[type=submit]');
       const putReq = await putPromise;
       const disabledInFlight = await page.locator('button[type=submit]').isDisabled();
+      releasePut();
+      await page.unroute('https://api.github.com/**', holdPut);
       ok('submit button disables while in flight', disabledInFlight);
       putBody = JSON.parse(putReq.postData());
       const decoded = JSON.parse(utf8FromB64(putBody.content));
