@@ -41,7 +41,8 @@
   font-size:11px;color:#fff;
 }
 #progressRail .rail-step.is-current:not([data-state="done"]) .rail-num{
-  background:#fff;border-color:var(--rail-orange);border-width:2px;color:var(--rail-onyx);
+  background:var(--rail-onyx);border-color:var(--rail-orange);border-width:2px;color:var(--rail-orange);
+  box-shadow:0 0 0 3px rgba(243,120,32,.3);
 }
 #progressRail .rail-step.is-current{background:rgba(255,255,255,.08)}
 #progressRail .rail-step.is-current .rail-label{color:#fff;font-weight:700}
