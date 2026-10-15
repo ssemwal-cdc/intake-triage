@@ -126,7 +126,11 @@ give you.
    ```
    python skills/request-slide/template/build_slide.py fields.json <scratch>/<file-stem>.pptx
    ```
-   The file-stem is the submission file name, without `.json`.
+   The file-stem is `<submitted date>-<requester initials>-<keyword>`, all lowercase,
+   such as `2026-10-07-rb-kyc`. The date is the submission's `submittedAt` date.
+   The initials come from `yourName`. The keyword is one word for the ask,
+   usually the submission's `shortName`. When two slides would share a stem,
+   ask the owner for a different keyword.
 
 7. **Show the owner a preview.** Export the draft's one slide to a PNG,
    with the first way that works:
