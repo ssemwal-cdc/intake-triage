@@ -23,6 +23,7 @@ Plan: docs/decisions/leadership-dashboard.md#build-plan (claude.ai artifact)
 1. Mockups: four directions on shared sample data, reviewed by the owner. Owner picks one.
    - Projector first: a fixed 16:9 stage scaled to fit, no scrolling, viewed like a live slide (owner, 2026-10-26).
    - Blank canvas first: builders get no palette, font or brand. The Compass brand is a later revision of the pick (owner, 2026-10-26).
+   - Audience: the page is the owner reporting to leadership. No copy written at the viewer as a to-do ("Needs your attention"); use status words such as "Behind or blocked" (owner, 2026-10-26).
 2. Build the picked direction as a private artifact, with its records in the artifact's store.
 3. Seed it with the owner's real project list and the triaged intake queue.
 4. Share it with Glen and Jared inside Compass.
