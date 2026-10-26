@@ -1,6 +1,6 @@
 # One-slide management summary of a request
 
-Status: ruled 2026-10-05 by the owner: build the skill and the button. Skill and button built (8928ee9); template rebuilt on the official master (373e491, 5e613a8); v4 rebuild (owner's v3 review) in progress on `slide-v4`.
+Status: ruled 2026-10-05 by the owner: build the skill and the button. Skill and button built (8928ee9); template rebuilt on the official master (373e491, 5e613a8); v4 rebuild (owner's v3 review) merged in PR #1 (146864e).
 
 - Build as a Claude skill `request-slide`, not in triage.html. A static page has no Microsoft sign-in for SharePoint or Teams and no safe place for a model key.
 - Input: a submission file name. The skill reads it from `intake-submissions` with `gh`, and stops if triage is empty.
