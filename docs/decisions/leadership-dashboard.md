@@ -1,6 +1,6 @@
 # Weekly leadership dashboard
 
-Status: ruled 2026-10-26 by the owner: an org-only claude.ai artifact, not a page on the public site. Look not chosen; four mockup directions are under review.
+Status: ruled 2026-10-26 by the owner: an org-only claude.ai artifact, not a page on the public site. Look locked 2026-11-10 by the owner: Weekly Status Muted (claude.ai/artifact/XsyCotrAUN9s568hB1sAuq).
 Kind: build
 Plan: docs/decisions/leadership-dashboard.md#build-plan (claude.ai artifact)
 
@@ -20,7 +20,8 @@ Plan: docs/decisions/leadership-dashboard.md#build-plan (claude.ai artifact)
 
 ## Build plan
 
-1. Mockups: four directions on shared sample data, reviewed by the owner. Owner picks one.
+1. Mockups: four directions on shared sample data, reviewed by the owner. Done: the owner locked Weekly Status Muted (claude.ai/artifact/XsyCotrAUN9s568hB1sAuq) on 2026-11-10.
+   - Locked look: the Compass-branded scoreboard, projects and queue screens, with muted status hues (brick, ochre, sage-teal) on marks, edges and figures only, never large fills. Square edges everywhere except the Top item band, which keeps its slanted shape (owner, 2026-11-10).
    - Projector first: a fixed 16:9 stage scaled to fit, no scrolling, viewed like a live slide (owner, 2026-10-26).
    - Blank canvas first: builders get no palette, font or brand. The Compass brand is a later revision of the pick (owner, 2026-10-26).
    - Audience: the page is the owner reporting to leadership. No copy written at the viewer as a to-do ("Needs your attention"); use status words such as "Behind or blocked" (owner, 2026-10-26).
