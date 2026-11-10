@@ -31,7 +31,8 @@ Plan: docs/decisions/leadership-dashboard.md#build-plan (claude.ai artifact)
    - Each item may also carry `size` (big rock, small rock, backlog) and `hidden`.
    - Edit data (editors only, owner 2026-11-10): one table of every item. Status picks the screen: On track, At risk, Blocked or Done put it on Projects; Queue puts it on the Queue screen. Save rewrites `dashboard/week`.
    - Show column (owner 2026-11-10): an unticked row stays in the table and leaves every list, but still counts in its status tile and queue column.
-   - Text limits (measured 2026-11-10 on the 1920x1080 stage, with a margin for wide letters): project title 36, owner/for 24, this week 140; request title 45, requester 30. Over a limit, Save refuses.
+   - Text limits (measured 2026-11-10 on the 1920x1080 stage, with a margin for wide letters): title 36 and owner/for 24 for every row, this week 140. Queue cards could hold more, but one limit is simpler (owner 2026-11-10). Over a limit, Save refuses.
+   - Edit data sorts by rock (Big Rock, Small Rock, Backlog, Not Yet Triaged), then status (Blocked, At Risk, On Track, Done, Queue), when it opens and after Save, never while typing (owner 2026-11-10).
    - Scoreboard heading reads "Project Status", not a project count (owner 2026-11-10).
    - Labels are Title Case: titles, team names, categories (Big Rock, Small Rock, Backlog, Not Yet Triaged) and statuses (On Track, At Risk, Blocked, Done, Queue). Sentence case only for "this week" notes (owner 2026-11-10).
    - Projects screen order (owner 2026-11-10, "for now"): Blocked, At risk, late, no forecast, on track, Done; ties by the larger slip, then the earliest agreed date.
