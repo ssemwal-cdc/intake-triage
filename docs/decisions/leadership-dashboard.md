@@ -35,6 +35,7 @@ Plan: docs/decisions/leadership-dashboard.md#build-plan (claude.ai artifact)
    - Edit data sorts by rock (Big Rock, Small Rock, Backlog, Not Yet Triaged), then status (Blocked, At Risk, On Track, Done, Queue), when it opens and after Save, never while typing (owner 2026-11-10).
    - Scoreboard heading reads "Project Status", not a project count (owner 2026-11-10).
    - Labels are Title Case: titles, team names, categories (Big Rock, Small Rock, Backlog, Not Yet Triaged) and statuses (On Track, At Risk, Blocked, Done, Queue). Sentence case only for "this week" notes (owner 2026-11-10).
+   - Top Item (owner 2026-11-10): the owner picks it with the Top tick in Edit data (one project, stored as `pinned`). With no visible pin, the page picks: Blocked, then At Risk, then late; ties by the larger slip, then the earliest agreed date; with none, the latest shipped project.
    - Projects screen order (owner 2026-11-10, "for now"): Blocked, At risk, late, no forecast, on track, Done; ties by the larger slip, then the earliest agreed date.
 3. Seed it with the owner's real project list and the triaged intake queue. Done 2026-11-10: 12 projects and 5 requests, from intake records, repos, GitHub, Outlook, Teams and the owner's additions.
 4. Share it with Glen and Jared inside Compass.
