@@ -27,8 +27,13 @@ Plan: docs/decisions/leadership-dashboard.md#build-plan (claude.ai artifact)
    - Audience: the page is the owner reporting to leadership. No copy written at the viewer as a to-do ("Needs your attention"); use status words such as "Behind or blocked" (owner, 2026-10-26).
 2. Build the picked direction as a private artifact, with its records in the artifact's store. Done 2026-11-10: Shivam's Triage (claude.ai/artifact/HGXAb1fRN9Ub72QPWQDrHq).
    - The week is one store document, `dashboard/week`: `owner`, `asOf`, `weekOf` ("YYYY-MM-DD to YYYY-MM-DD"), `inFlight[]` (title, forTeam, status, agreed, forecast, thisWeek), `queue[]` (title, requester, disposition, received, triaged), and `sample: true` while it holds sample data, which shows a "Sample data" tag.
-   - Access: anyone the page is shared with reads; only editors (and Claude, as the owner) write. The page never writes.
-   - It holds the mockup's sample week until step 3 replaces it.
-3. Seed it with the owner's real project list and the triaged intake queue.
+   - Access: anyone the page is shared with reads; only editors (and Claude, as the owner) write. Only the Edit data table writes.
+   - Each item may also carry `size` (big rock, small rock, backlog) and `hidden`.
+   - Edit data (editors only, owner 2026-11-10): one table of every item. Status picks the screen: On track, At risk, Blocked or Done put it on Projects; Queue puts it on the Queue screen. Save rewrites `dashboard/week`.
+   - Show column (owner 2026-11-10): an unticked row stays in the table and leaves every list, but still counts in its status tile and queue column.
+   - Text limits (measured 2026-11-10 on the 1920x1080 stage, with a margin for wide letters): project title 36, owner/for 24, this week 140; request title 45, requester 30. Over a limit, Save refuses.
+   - Scoreboard heading reads "Project Status", not a project count (owner 2026-11-10).
+   - Projects screen order (owner 2026-11-10, "for now"): Blocked, At risk, late, no forecast, on track, Done; ties by the larger slip, then the earliest agreed date.
+3. Seed it with the owner's real project list and the triaged intake queue. Done 2026-11-10: 12 projects and 5 requests, from intake records, repos, GitHub, Outlook, Teams and the owner's additions.
 4. Share it with Glen and Jared inside Compass.
 5. Each week: the owner sends one line per project and any forecast changes; the store is updated, and the link stays the same.
