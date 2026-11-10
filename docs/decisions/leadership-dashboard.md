@@ -33,6 +33,7 @@ Plan: docs/decisions/leadership-dashboard.md#build-plan (claude.ai artifact)
    - Show column (owner 2026-11-10): an unticked row stays in the table and leaves every list, but still counts in its status tile and queue column.
    - Text limits (measured 2026-11-10 on the 1920x1080 stage, with a margin for wide letters): project title 36, owner/for 24, this week 140; request title 45, requester 30. Over a limit, Save refuses.
    - Scoreboard heading reads "Project Status", not a project count (owner 2026-11-10).
+   - Labels are Title Case: titles, team names, categories (Big Rock, Small Rock, Backlog, Not Yet Triaged) and statuses (On Track, At Risk, Blocked, Done, Queue). Sentence case only for "this week" notes (owner 2026-11-10).
    - Projects screen order (owner 2026-11-10, "for now"): Blocked, At risk, late, no forecast, on track, Done; ties by the larger slip, then the earliest agreed date.
 3. Seed it with the owner's real project list and the triaged intake queue. Done 2026-11-10: 12 projects and 5 requests, from intake records, repos, GitHub, Outlook, Teams and the owner's additions.
 4. Share it with Glen and Jared inside Compass.
