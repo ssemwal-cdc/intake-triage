@@ -1,0 +1,42 @@
+# Weekly leadership dashboard
+
+Status: ruled 2026-10-26 by the owner: an org-only claude.ai artifact, not a page on the public site. Look locked 2026-11-10 by the owner: Weekly Status Muted (claude.ai/artifact/XsyCotrAUN9s568hB1sAuq).
+Kind: build
+Plan: docs/decisions/leadership-dashboard.md#build-plan (claude.ai artifact)
+
+- Asked by Glen (with Jared): one page to show every week at the finance leadership meeting.
+- Fields asked for: projects in flight, who each is for, status, what happened this past week, agreed completion date, forecasted completion date, and the queue.
+- Why not this repo: the repo and its GitHub Pages site are public, and the page's token can read every submission. The threat model (`threat-model.md`) covers requesters seeing each other's requests, not leadership data on a public URL.
+- Why an artifact: Compass claude.ai sign-in limits who can see it, with no token. This is the same reason `hosting.md` gives for the shelved claude.ai route.
+- Data: the artifact keeps its own small store. The queue comes from triaged intake records (disposition big rock, small rock or backlog), copied in, not read live. Status, the weekly note, and the agreed and forecast dates exist nowhere else; the owner supplies them each week.
+- Open: projects that never came through intake need a list from the owner. One view serves Glen and Jared unless they ask for two.
+
+| Option | Gain | Loss |
+|---|---|---|
+| Org-only artifact (chosen) | Compass sign-in only; stable link; weekly update is one note | Queue is a copy, not live |
+| Page in this repo | One home; live queue | Public URL; leadership data behind a readable token |
+| Weekly slide | Fits a deck; private | Static snapshot; rebuilt weekly |
+| monday.com board | Nothing to build | Intake queue does not flow in; only works if leadership uses monday |
+
+## Build plan
+
+1. Mockups: four directions on shared sample data, reviewed by the owner. Done: the owner locked Weekly Status Muted (claude.ai/artifact/XsyCotrAUN9s568hB1sAuq) on 2026-11-10.
+   - Locked look: the Compass-branded scoreboard, projects and queue screens, with muted status hues (brick, ochre, sage-teal) on marks, edges and figures only, never large fills. Square edges everywhere except the Top item band, which keeps its slanted shape (owner, 2026-11-10).
+   - Projector first: a fixed 16:9 stage scaled to fit, no scrolling, viewed like a live slide (owner, 2026-10-26).
+   - Blank canvas first: builders get no palette, font or brand. The Compass brand is a later revision of the pick (owner, 2026-10-26).
+   - Audience: the page is the owner reporting to leadership. No copy written at the viewer as a to-do ("Needs your attention"); use status words such as "Behind or blocked" (owner, 2026-10-26).
+2. Build the picked direction as a private artifact, with its records in the artifact's store. Done 2026-11-10: Shivam's Triage (claude.ai/artifact/HGXAb1fRN9Ub72QPWQDrHq).
+   - The week is one store document, `dashboard/week`: `owner`, `asOf`, `weekOf` ("YYYY-MM-DD to YYYY-MM-DD"), `inFlight[]` (title, forTeam, status, agreed (shown as "Committed", owner 2026-11-11), forecast, thisWeek, received), `queue[]` (title, requester, disposition, received, triaged), and `sample: true` while it holds sample data, which shows a "Sample data" tag.
+   - Access: anyone the page is shared with reads; only editors (and Claude, as the owner) write. Only the Edit data table writes.
+   - Each item may also carry `size` (big rock, small rock, backlog) and `hidden`.
+   - Edit data (editors only, owner 2026-11-10): one table of every item. Status picks the screen: On track, At risk, Blocked or Done put it on Projects; Queue puts it on the Queue screen. Save rewrites `dashboard/week`.
+   - Show column (owner 2026-11-10): an unticked row stays in the table and leaves every list, but still counts in its status tile and queue column.
+   - Text limits (measured 2026-11-10 on the 1920x1080 stage, with a margin for wide letters): title 36 and owner/for 24 for every row, this week 140. Queue cards could hold more, but one limit is simpler (owner 2026-11-10). Over a limit, Save refuses.
+   - Edit data sorts by rock (Big Rock, Small Rock, Backlog, Not Yet Triaged), then status (Blocked, At Risk, On Track, Done, Queue), when it opens and after Save, never while typing (owner 2026-11-10).
+   - Scoreboard heading reads "Project Status", not a project count (owner 2026-11-10).
+   - Labels are Title Case: titles, team names, categories (Big Rock, Small Rock, Backlog, Not Yet Triaged) and statuses (On Track, At Risk, Blocked, Done, Queue). Sentence case only for "this week" notes (owner 2026-11-10).
+   - Top Item (owner 2026-11-10): the owner picks it with the Top tick in Edit data (one project, stored as `pinned`). With no visible pin, the page picks: Blocked, then At Risk, then late; ties by the larger slip, then the earliest agreed date; with none, the latest shipped project.
+   - Projects screen order (owner 2026-11-10, "for now"): Blocked, At risk, late, no forecast, on track, Done; ties by the larger slip, then the earliest agreed date.
+3. Seed it with the owner's real project list and the triaged intake queue. Done 2026-11-10: 12 projects and 5 requests, from intake records, repos, GitHub, Outlook, Teams and the owner's additions.
+4. Share it with Glen and Jared inside Compass.
+5. Each week: the owner sends one line per project and any forecast changes; the store is updated, and the link stays the same.
