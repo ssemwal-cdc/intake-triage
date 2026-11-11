@@ -26,7 +26,7 @@ Plan: docs/decisions/leadership-dashboard.md#build-plan (claude.ai artifact)
    - Blank canvas first: builders get no palette, font or brand. The Compass brand is a later revision of the pick (owner, 2026-10-26).
    - Audience: the page is the owner reporting to leadership. No copy written at the viewer as a to-do ("Needs your attention"); use status words such as "Behind or blocked" (owner, 2026-10-26).
 2. Build the picked direction as a private artifact, with its records in the artifact's store. Done 2026-11-10: Shivam's Triage (claude.ai/artifact/HGXAb1fRN9Ub72QPWQDrHq).
-   - The week is one store document, `dashboard/week`: `owner`, `asOf`, `weekOf` ("YYYY-MM-DD to YYYY-MM-DD"), `inFlight[]` (title, forTeam, status, agreed, forecast, thisWeek), `queue[]` (title, requester, disposition, received, triaged), and `sample: true` while it holds sample data, which shows a "Sample data" tag.
+   - The week is one store document, `dashboard/week`: `owner`, `asOf`, `weekOf` ("YYYY-MM-DD to YYYY-MM-DD"), `inFlight[]` (title, forTeam, status, agreed (shown as "Committed", owner 2026-11-11), forecast, thisWeek, received), `queue[]` (title, requester, disposition, received, triaged), and `sample: true` while it holds sample data, which shows a "Sample data" tag.
    - Access: anyone the page is shared with reads; only editors (and Claude, as the owner) write. Only the Edit data table writes.
    - Each item may also carry `size` (big rock, small rock, backlog) and `hidden`.
    - Edit data (editors only, owner 2026-11-10): one table of every item. Status picks the screen: On track, At risk, Blocked or Done put it on Projects; Queue puts it on the Queue screen. Save rewrites `dashboard/week`.
